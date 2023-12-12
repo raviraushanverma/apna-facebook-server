@@ -62,6 +62,7 @@ app.post("/post", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "apka post success ho gaya hai",
+    post: post,
   });
 });
 
@@ -81,5 +82,6 @@ app.post("/comment", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "data save ho gaya",
+    post: post,
   });
 });
