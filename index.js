@@ -40,8 +40,8 @@ app.post("/media-upload", async (request, response) => {
   try {
     const file = request.files.media;
     const media = await v2.uploader.upload(file.tempFilePath, {
-      upload_preset: "ravi_raushan_ka_apna_facebook",
-      public_id: "ravi_raushan_ka_apna_facebook",
+      upload_preset: "ml_default",
+      public_id: true,
     });
     response.send({
       isSuccess: true,
