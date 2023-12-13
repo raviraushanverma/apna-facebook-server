@@ -11,6 +11,7 @@ v2.config({
   cloud_name: "drwcm1tej",
   api_key: "138265649998732",
   api_secret: "a8fXTs9XX4FtcS6aLiebE3HFVJ8",
+  upload_preset: "ml_default",
 });
 
 connectDataBase();
