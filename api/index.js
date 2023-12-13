@@ -1,9 +1,9 @@
 import express, { request, response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import connectDataBase from "./database.js";
-import User from "./models/user.js";
-import Post from "./models/post.js";
+import connectDataBase from "../database.js";
+import User from "../models/user.js";
+import Post from "../models/post.js";
 import expressFileUpload from "express-fileupload";
 import { v2 } from "cloudinary";
 
