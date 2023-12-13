@@ -20,7 +20,6 @@ app.listen(port, () => {
 });
 
 app.post("/singup", async (request, response) => {
-  console.log("check ", request.body);
   const user = await User.findOne({ email: request.body.email });
   if (user === null) {
     await User.create(request.body);
@@ -56,9 +55,7 @@ app.post("/login", async (request, response) => {
 });
 
 app.post("/post", async (request, response) => {
-  console.log(request.body);
   const post = await Post.create(request.body);
-  console.log(post.content);
   response.send({
     isSuccess: true,
     message: "apka post success ho gaya hai",
@@ -77,11 +74,18 @@ app.get("/getData", async (request, response) => {
 
 app.post("/comment", async (request, response) => {
   const post = await Post.findById(request.body.id);
+
   post.comments.unshift(request.body.comments);
+  console.log(post);
   await post.save();
   response.send({
     isSuccess: true,
     message: "data save ho gaya",
     post: post,
+    id: post.comments,
   });
+});
+
+app.delete("/delete", async (request, response) => {
+  console.log("===>hello", request.body);
 });
