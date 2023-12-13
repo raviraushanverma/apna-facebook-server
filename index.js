@@ -40,9 +40,10 @@ app.get("/", async (request, response) => {
 app.post("/media-upload", async (request, response) => {
   try {
     const file = request.files.media;
-    const media = await v2.uploader.upload(file.tempFilePath, {
-      upload_preset: "ravi_raushan_ka_apna_facebook",
-    });
+    const media = await v2.uploader.unsigned_upload(
+      file.tempFilePath,
+      "ravi_raushan_ka_apna_facebook"
+    );
     response.send({
       isSuccess: true,
       message: "Media successfully uploaded",
@@ -92,7 +93,6 @@ app.post("/login", async (request, response) => {
 });
 
 app.post("/post", async (request, response) => {
-  console.log("====>hello", request.body.images);
   const post = await Post.create(request.body);
   response.send({
     isSuccess: true,
