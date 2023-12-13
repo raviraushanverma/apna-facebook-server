@@ -39,7 +39,9 @@ app.get("/", async (request, response) => {
 app.post("/media-upload", async (request, response) => {
   try {
     const file = request.files.media;
-    const media = await v2.uploader.upload(file.tempFilePath);
+    const media = await v2.uploader.upload(file.tempFilePath, {
+      upload_preset: "my_preset",
+    });
     response.send({
       isSuccess: true,
       message: "Media successfully uploaded",
