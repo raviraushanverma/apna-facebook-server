@@ -1,9 +1,9 @@
-import express, { request, response } from "express";
+import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import connectDataBase from "../database.js";
-import User from "../models/user.js";
-import Post from "../models/post.js";
+import connectDataBase from "./database.js";
+import User from "./models/user.js";
+import Post from "./models/post.js";
 import expressFileUpload from "express-fileupload";
 import { v2 } from "cloudinary";
 
@@ -30,6 +30,10 @@ app.listen(port, () => {
   console.log(`===========================================`);
   console.log(`Apna Facebook app listening on port ${port}`);
   console.log(`===========================================`);
+});
+
+app.get("/", async (request, response) => {
+  response.send("Wow, Our API is working!!!!!");
 });
 
 app.post("/media-upload", async (request, response) => {
