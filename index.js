@@ -4,15 +4,6 @@ import bodyParser from "body-parser";
 import connectDataBase from "./database.js";
 import User from "./models/user.js";
 import Post from "./models/post.js";
-import expressFileUpload from "express-fileupload";
-import { v2 } from "cloudinary";
-
-v2.config({
-  cloud_name: "drwcm1tej",
-  api_key: "138265649998732",
-  api_secret: "a8fXTs9XX4FtcS6aLiebE3HFVJ8",
-  upload_preset: "ravi_raushan_ka_apna_facebook",
-});
 
 connectDataBase();
 
@@ -21,11 +12,6 @@ const port = 5000;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(
-  expressFileUpload({
-    useTempFiles: true,
-  })
-);
 
 app.listen(port, () => {
   console.log(`===========================================`);
@@ -35,32 +21,6 @@ app.listen(port, () => {
 
 app.get("/", async (request, response) => {
   response.send("Wow, Our API is working!!!!!");
-});
-
-app.post("/media-upload", async (request, response) => {
-  try {
-    const file = request.files.media;
-    const media = await v2.uploader.unsigned_upload(
-      file.tempFilePath,
-      "ravi_raushan_ka_apna_facebook"
-    );
-    response.header("Access-Control-Allow-Origin", "*");
-    response.header(
-      "Access-Control-Allow-Methods",
-      "POST, PUT, DELETE, GET, OPTIONS"
-    );
-    response.header("Access-Control-Request-Method", "*");
-    response.send({
-      isSuccess: true,
-      message: "Media successfully uploaded",
-      media: media,
-    });
-  } catch (error) {
-    response.send({
-      isSuccess: false,
-      message: `There are some errors while uploading the media: ${error}`,
-    });
-  }
 });
 
 app.post("/singup", async (request, response) => {
