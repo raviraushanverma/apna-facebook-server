@@ -44,6 +44,12 @@ app.post("/media-upload", async (request, response) => {
       file.tempFilePath,
       "ravi_raushan_ka_apna_facebook"
     );
+    response.header("Access-Control-Allow-Origin", "*");
+    response.header(
+      "Access-Control-Allow-Methods",
+      "POST, PUT, DELETE, GET, OPTIONS"
+    );
+    response.header("Access-Control-Request-Method", "*");
     response.send({
       isSuccess: true,
       message: "Media successfully uploaded",
