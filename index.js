@@ -11,7 +11,7 @@ v2.config({
   cloud_name: "drwcm1tej",
   api_key: "138265649998732",
   api_secret: "a8fXTs9XX4FtcS6aLiebE3HFVJ8",
-  upload_preset: "ml_default",
+  upload_preset: "ravi_raushan_ka_apna_facebook",
 });
 
 connectDataBase();
@@ -41,8 +41,7 @@ app.post("/media-upload", async (request, response) => {
   try {
     const file = request.files.media;
     const media = await v2.uploader.upload(file.tempFilePath, {
-      upload_preset: "ml_default",
-      public_id: true,
+      upload_preset: "ravi_raushan_ka_apna_facebook",
     });
     response.send({
       isSuccess: true,
