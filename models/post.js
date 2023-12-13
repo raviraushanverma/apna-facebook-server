@@ -70,6 +70,10 @@ const PostSchema = new Schema({
       owner: {
         type: String,
       },
+      created: {
+        type: Date,
+        default: Date.now,
+      },
     },
   ],
 });
