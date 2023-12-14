@@ -79,7 +79,6 @@ app.get("/posts", async (request, response) => {
 
 app.post("/comment", async (request, response) => {
   const post = await Post.findById(request.body.id);
-
   post.comments.unshift(request.body.comments);
   await post.save();
   response.send({
@@ -93,7 +92,16 @@ app.post("/comment", async (request, response) => {
 app.delete(
   "/comment_delete/:post_id/:comment_id",
   async (request, response) => {
-    console.log("===>post_id ", request.params.post_id);
-    console.log("===>comment_id ", request.params.comment_id);
+    const post = await Post.findById(request.params.post_id);
+    const comment_id = post.comments.findIndex((comment) => {
+      return request.params.comment_id == comment._id;
+    });
+    post.comments.splice(comment_id, 1);
+    await post.save();
+    response.send({
+      isSuccess: true,
+      message: "commented deleted ho gaya hai",
+      post: post,
+    });
   }
 );
