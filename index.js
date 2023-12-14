@@ -8,6 +8,7 @@ import Post from "./models/post.js";
 connectDataBase();
 
 const app = express();
+
 const port = 5000;
 
 app.use(cors());
@@ -67,7 +68,7 @@ app.post("/post", async (request, response) => {
   });
 });
 
-app.get("/getData", async (request, response) => {
+app.get("/posts", async (request, response) => {
   const posts = await Post.find().sort({ created: -1 });
   response.send({
     isSuccess: true,
@@ -80,7 +81,6 @@ app.post("/comment", async (request, response) => {
   const post = await Post.findById(request.body.id);
 
   post.comments.unshift(request.body.comments);
-  console.log(post);
   await post.save();
   response.send({
     isSuccess: true,
@@ -90,6 +90,10 @@ app.post("/comment", async (request, response) => {
   });
 });
 
-app.delete("/delete", async (request, response) => {
-  console.log("===>hello", request.body);
-});
+app.delete(
+  "/comment_delete/:post_id/:comment_id",
+  async (request, response) => {
+    console.log("===>post_id ", request.params.post_id);
+    console.log("===>comment_id ", request.params.comment_id);
+  }
+);
