@@ -1,4 +1,4 @@
-import express from "express";
+import express, { request, response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import connectDataBase from "./database.js";
@@ -68,6 +68,10 @@ app.post("/post", async (request, response) => {
   });
 });
 
+app.delete("/post-delete/:post_id", async (request, response) => {
+  console.log(request.params.post_id);
+});
+
 app.get("/posts", async (request, response) => {
   const posts = await Post.find().sort({ created: -1 });
   response.send({
@@ -105,5 +109,3 @@ app.delete(
     });
   }
 );
-
-app.put("/comment_edit", (request, response) => {});
