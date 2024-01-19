@@ -68,7 +68,8 @@ const PostSchema = new Schema({
         type: String,
       },
       owner: {
-        type: String,
+        userId: { type: String },
+        userName: { type: String },
       },
       created: {
         type: Date,
@@ -76,6 +77,10 @@ const PostSchema = new Schema({
       },
     },
   ],
+  owner: {
+    userId: { type: String },
+    userName: { type: String },
+  },
 });
 const Post = model("Post", PostSchema);
 
