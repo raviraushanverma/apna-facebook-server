@@ -24,7 +24,7 @@ app.get("/", async (request, response) => {
   response.send("Wow, Our API is working!!!!!");
 });
 
-app.post("/singup", async (request, response) => {
+app.post("/sign_up", async (request, response) => {
   const user = await User.findOne({ email: request.body.email });
   if (user === null) {
     await User.create(request.body);
