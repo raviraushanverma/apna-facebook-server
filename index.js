@@ -109,3 +109,14 @@ app.delete(
     });
   }
 );
+app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
+  const post = await Post.deleteOne({
+    _id: request.params.post_id,
+    "owner.userId": request.params.user_id,
+  });
+
+  response.send({
+    isSuccess: true,
+    message: "post delete ho gaya hai",
+  });
+});
