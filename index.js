@@ -120,3 +120,15 @@ app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
     message: "post delete ho gaya hai",
   });
 });
+
+app.get("/profile_post/:user_id", async (request, response) => {
+  console.log(request.params.user_id);
+  const post = await Post.deleteOne({
+    "owner.userId": request.params.user_id,
+  });
+
+  response.send({
+    isSuccess: true,
+    message: "post delete ho gaya hai",
+  });
+});
