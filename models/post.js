@@ -49,16 +49,12 @@ const PostSchema = new Schema({
       type: Number,
     },
   },
-  likes: [
-    {
-      id: {
-        type: String,
-      },
-      user: {
-        type: String,
-      },
-    },
-  ],
+  likes: {
+    type: Map,
+    of: String,
+    default: {},
+    required: true,
+  },
   comments: [
     {
       id: {

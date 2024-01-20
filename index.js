@@ -109,6 +109,7 @@ app.delete(
     });
   }
 );
+
 app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
   const post = await Post.deleteOne({
     _id: request.params.post_id,
@@ -121,14 +122,15 @@ app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
   });
 });
 
-app.get("/profile_post/:user_id", async (request, response) => {
-  console.log(request.params.user_id);
-  const post = await Post.deleteOne({
-    "owner.userId": request.params.user_id,
-  });
-
-  response.send({
-    isSuccess: true,
-    message: "post delete ho gaya hai",
-  });
-});
+app.post(
+  "/post_like/:post_id/:user_id/:user_name",
+  async (request, response) => {
+    const post = await Post.findById(request.params.post_id);
+    post.likes.set(request.params.user_id, request.params.user_name);
+    await post.save();
+    response.send({
+      isSuccess: true,
+      message: "post like ho gaya hai",
+    });
+  }
+);
