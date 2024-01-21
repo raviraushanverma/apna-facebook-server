@@ -126,11 +126,28 @@ app.post(
   "/post_like/:post_id/:user_id/:user_name",
   async (request, response) => {
     const post = await Post.findById(request.params.post_id);
-    post.likes.set(request.params.user_id, request.params.user_name);
-    await post.save();
-    response.send({
-      isSuccess: true,
-      message: "post like ho gaya hai",
-    });
+    const keyCheck = post.likes.has(request.params.user_id);
+    if (keyCheck === false) {
+      post.likes.set(request.params.user_id, request.params.user_name);
+      await post.save();
+      response.send({
+        isSuccess: true,
+        message: "post like ho gaya hai",
+      });
+    } else {
+      post.likes.delete(request.params.user_id);
+      await post.save();
+      response.send({
+        isSuccess: false,
+        message: "post like delete ho gaya hai",
+      });
+    }
   }
 );
+app.post("/edit_post/:post_id/:user_id", async (request, response) => {
+  console.log(request.params.post_id);
+  response.send({
+    isSuccess: true,
+    message: "edit ho gaya hai",
+  });
+});
