@@ -8,24 +8,13 @@ const PostSchema = new Schema({
     type: Date,
     default: Date.now,
   },
-  videos: [
+  medias: [
     {
-      id: {
-        type: String,
-      },
-      url: {
-        type: String,
-      },
-    },
-  ],
-  images: [
-    {
-      id: {
-        type: String,
-      },
-      url: {
-        type: String,
-      },
+      _id: String,
+      asset_id: String,
+      resource_type: String,
+      secure_url: String,
+      url: String,
     },
   ],
   owner: {
