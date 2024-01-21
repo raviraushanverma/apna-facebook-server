@@ -144,8 +144,16 @@ app.post(
     }
   }
 );
-app.post("/edit_post/:post_id/:user_id", async (request, response) => {
-  console.log(request.params.post_id);
+app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
+  console.log(request.body);
+  const post = await Post.findById(request.params.post_id);
+  const index = post.comments.findIndex((element) => {
+    return element._id == request.params.comment_id;
+  });
+
+  post.comments[index].content = request.body.content;
+  await post.save();
+
   response.send({
     isSuccess: true,
     message: "edit ho gaya hai",
