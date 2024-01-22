@@ -68,10 +68,6 @@ app.post("/post", async (request, response) => {
   });
 });
 
-app.delete("/post-delete/:post_id", async (request, response) => {
-  console.log(request.params.post_id);
-});
-
 app.get("/posts", async (request, response) => {
   const posts = await Post.find().sort({ created: -1 });
   response.send({
