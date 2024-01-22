@@ -159,3 +159,21 @@ app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
     message: "edit ho gaya hai",
   });
 });
+
+app.get("/profile_post/:user_id", async (request, response) => {
+  const posts = await Post.find({ "owner.userId": request.params.user_id });
+  response.send({
+    isSuccess: true,
+    message: "data aa gaya",
+    posts: posts,
+  });
+});
+
+app.get("/get_user/:user_id", async (request, response) => {
+  const user = await User.findById(request.params.user_id);
+  response.send({
+    isSuccess: true,
+    message: "data aa gaya",
+    user: user,
+  });
+});

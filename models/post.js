@@ -60,14 +60,6 @@ const PostSchema = new Schema({
         type: Date,
         default: Date.now,
       },
-      images: {
-        id: {
-          type: String,
-        },
-        url: {
-          type: String,
-        },
-      },
     },
   ],
   owner: {
