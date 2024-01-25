@@ -61,15 +61,19 @@ app.post("/login", async (request, response) => {
 
 app.post("/post", async (request, response) => {
   const post = await Post.create(request.body);
+  const postWithOwner = await post.populate("owner");
   response.send({
     isSuccess: true,
     message: "apka post success ho gaya hai",
-    post: post,
+    post: postWithOwner,
   });
 });
 
 app.get("/posts", async (request, response) => {
-  const posts = await Post.find().sort({ created: -1 });
+  const posts = await Post.find()
+    .populate("owner")
+    .populate("comments.owner")
+    .sort({ created: -1 });
   response.send({
     isSuccess: true,
     message: "data aa gaya",
@@ -81,11 +85,13 @@ app.post("/comment", async (request, response) => {
   const post = await Post.findById(request.body.id);
   post.comments.unshift(request.body.comments);
   await post.save();
+  const postWithAllData = await (
+    await post.populate("owner")
+  ).populate("comments.owner");
   response.send({
     isSuccess: true,
     message: "data save ho gaya",
-    post: post,
-    id: post.comments,
+    post: postWithAllData,
   });
 });
 
@@ -141,7 +147,6 @@ app.post(
   }
 );
 app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
-  console.log(request.body);
   const post = await Post.findById(request.params.post_id);
   const index = post.comments.findIndex((element) => {
     return element._id == request.params.comment_id;
@@ -157,7 +162,12 @@ app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
 });
 
 app.get("/profile_post/:user_id", async (request, response) => {
-  const posts = await Post.find({ "owner.userId": request.params.user_id });
+  const posts = await Post.find({
+    owner: request.params.user_id,
+  })
+    .populate("owner")
+    .populate("comments.owner")
+    .sort({ created: -1 });
   response.send({
     isSuccess: true,
     message: "data aa gaya",
@@ -171,5 +181,16 @@ app.get("/get_user/:user_id", async (request, response) => {
     isSuccess: true,
     message: "data aa gaya",
     user: user,
+  });
+});
+
+app.post("/profile_update/:user_id", async (request, response) => {
+  const user = await User.updateOne(
+    { _id: request.params.user_id },
+    request.body
+  );
+  response.send({
+    isSuccess: true,
+    message: "proife save ho gaya hai",
   });
 });

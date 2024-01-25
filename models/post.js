@@ -17,9 +17,6 @@ const PostSchema = new Schema({
       url: String,
     },
   ],
-  owner: {
-    type: String,
-  },
   taggedFriends: [
     {
       id: {
@@ -52,20 +49,14 @@ const PostSchema = new Schema({
       content: {
         type: String,
       },
-      owner: {
-        userId: { type: String },
-        userName: { type: String },
-      },
+      owner: { type: Schema.ObjectId, ref: "User" },
       created: {
         type: Date,
         default: Date.now,
       },
     },
   ],
-  owner: {
-    userId: { type: String },
-    userName: { type: String },
-  },
+  owner: { type: Schema.ObjectId, ref: "User" },
 });
 const Post = model("Post", PostSchema);
 
