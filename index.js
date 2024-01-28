@@ -220,6 +220,7 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
     "Content-Encoding": "none",
     "Cache-Control": "no-cache, no-transform",
     "X-Accel-Buffering": "no",
+    "Access-Control-Allow-Origin": "*",
     Connection: "keep-alive",
   });
 
