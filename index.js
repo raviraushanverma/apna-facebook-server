@@ -216,7 +216,6 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
   const { logged_in_user_id } = request.params;
 
   response.statusCode = 200;
-  response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   response.setHeader("Content-Encoding", "none");
   response.setHeader("Cache-Control", "no-cache, no-transform");
