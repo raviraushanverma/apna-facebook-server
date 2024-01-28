@@ -214,11 +214,17 @@ app.post("/friend_request/:user_id", async (request, response) => {
 // SERVER SENT EVENT (SSE)
 app.get("/notification/:logged_in_user_id", async (request, response) => {
   const { logged_in_user_id } = request.params;
-  response.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
+
+  response.statusCode = 200;
+  response.setHeader("Content-Type", "text/event-stream");
+  response.setHeader("Transfer-Encoding", "chunked");
+  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("X-Accel-Buffering", "no");
+  response.setHeader("Connection", "keep-alive");
+
+  response.write(`data: ${JSON.stringify({})}\n\n`);
+
+  request.on("close", () => {});
 
   const pipeline = [
     {
@@ -283,8 +289,4 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
       }
     }
   });
-
-  response.write(`data: ${JSON.stringify({})}\n\n`);
-
-  request.on("close", () => {});
 });
