@@ -216,12 +216,12 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
   const { logged_in_user_id } = request.params;
 
   response.statusCode = 200;
-  response.setHeader("Content-Type", "text/event-stream");
-  response.setHeader("Transfer-Encoding", "chunked");
-  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  response.setHeader("Content-Encoding", "none");
+  response.setHeader("Cache-Control", "no-cache, no-transform");
   response.setHeader("X-Accel-Buffering", "no");
   response.setHeader("Connection", "keep-alive");
-
   response.write(`data: ${JSON.stringify({})}\n\n`);
 
   request.on("close", () => {});
