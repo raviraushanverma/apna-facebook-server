@@ -215,12 +215,14 @@ app.post("/friend_request/:user_id", async (request, response) => {
 app.get("/notification/:logged_in_user_id", async (request, response) => {
   const { logged_in_user_id } = request.params;
 
-  response.statusCode = 200;
-  response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  response.setHeader("Content-Encoding", "none");
-  response.setHeader("Cache-Control", "no-cache, no-transform");
-  response.setHeader("X-Accel-Buffering", "no");
-  response.setHeader("Connection", "keep-alive");
+  response.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Content-Encoding": "none",
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+    Connection: "keep-alive",
+  });
+
   response.write(`data: ${JSON.stringify({})}\n\n`);
 
   request.on("close", () => {});
