@@ -23,6 +23,12 @@ const UserSchema = new Schema({
     secure_url: String,
     url: String,
   },
+  banner: {
+    asset_id: String,
+    resource_type: String,
+    secure_url: String,
+    url: String,
+  },
 });
 
 const User = model("User", UserSchema);

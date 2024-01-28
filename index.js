@@ -27,10 +27,11 @@ app.get("/", async (request, response) => {
 app.post("/sign_up", async (request, response) => {
   const user = await User.findOne({ email: request.body.email });
   if (user === null) {
-    await User.create(request.body);
+    const user = await User.create(request.body);
     response.send({
       isSuccess: true,
       message: "apka account create ho gaya hai",
+      user: user,
     });
   } else {
     response.send({
