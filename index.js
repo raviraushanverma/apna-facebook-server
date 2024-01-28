@@ -5,6 +5,10 @@ import connectDataBase from "./database.js";
 import User from "./models/user.js";
 import Post from "./models/post.js";
 
+const findFieldNameFromObject = (obj, fieldName) => {
+  return Object.keys(obj).find((key) => key.includes(fieldName));
+};
+
 connectDataBase();
 
 const app = express();
@@ -116,7 +120,7 @@ app.delete(
 app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
   const post = await Post.deleteOne({
     _id: request.params.post_id,
-    "owner.userId": request.params.user_id,
+    owner: request.params.user_id,
   });
 
   response.send({
@@ -147,6 +151,7 @@ app.post(
     }
   }
 );
+
 app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
   const post = await Post.findById(request.params.post_id);
   const index = post.comments.findIndex((element) => {
@@ -194,4 +199,92 @@ app.post("/profile_update/:user_id", async (request, response) => {
     isSuccess: true,
     message: "proife save ho gaya hai",
   });
+});
+
+app.post("/friend_request/:user_id", async (request, response) => {
+  const user = await User.findById(request.params.user_id);
+  user.friendRequests.push(request.body.loggedInUserId);
+  await user.save();
+  response.send({
+    isSuccess: true,
+    message: "friendRequest save ho gaya hai",
+  });
+});
+
+// SERVER SENT EVENT (SSE)
+app.get("/notification/:logged_in_user_id", async (request, response) => {
+  const { logged_in_user_id } = request.params;
+  response.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  const pipeline = [
+    {
+      $match: {
+        $or: [{ operationType: "insert" }, { operationType: "update" }],
+      },
+    },
+  ];
+
+  User.watch(pipeline).on("change", async (changes) => {
+    const updatedFieldsObject = changes.updateDescription?.updatedFields;
+    if (updatedFieldsObject && Object.keys(updatedFieldsObject).length) {
+      const userId = changes.documentKey._id;
+      if (userId == logged_in_user_id) {
+        const friendRequestFieldKeyName = findFieldNameFromObject(
+          updatedFieldsObject,
+          "friendRequests"
+        );
+        const data = {
+          action: "FRIEND_REQUEST",
+          user: await User.findById(
+            updatedFieldsObject[friendRequestFieldKeyName]
+          ),
+        };
+        response.write(`data: ${JSON.stringify(data)}\n\n`);
+      }
+    }
+  });
+
+  Post.watch(pipeline).on("change", async (changes) => {
+    const updatedFieldsObject = changes.updateDescription?.updatedFields;
+    if (updatedFieldsObject && Object.keys(updatedFieldsObject).length) {
+      const postId = changes.documentKey._id;
+      const post = await Post.findById(postId);
+      if (post.owner == logged_in_user_id) {
+        const likeFieldName = findFieldNameFromObject(
+          updatedFieldsObject,
+          "likes"
+        );
+        if (likeFieldName) {
+          const data = {
+            action: "POST_LIKED",
+            user: await User.findById(likeFieldName.split(".")[1]),
+            post: post,
+          };
+          response.write(`data: ${JSON.stringify(data)}\n\n`);
+        }
+        const commentFieldName = findFieldNameFromObject(
+          updatedFieldsObject,
+          "comments"
+        );
+        if (commentFieldName) {
+          const data = {
+            action: "POST_COMMENTED",
+            user: await User.findById(
+              updatedFieldsObject[commentFieldName][0].owner
+            ),
+            post: post,
+          };
+          response.write(`data: ${JSON.stringify(data)}\n\n`);
+        }
+      }
+    }
+  });
+
+  response.write(`data: ${JSON.stringify({})}\n\n`);
+
+  request.on("close", () => {});
 });
