@@ -99,14 +99,16 @@ app.post("/comment", async (request, response) => {
   });
   await post.save();
 
-  const postOwner = await User.findById(post.owner);
-  postOwner.notifications.set(`${created}`, {
-    created,
-    action: "POST_COMMENTED",
-    user: await User.findById(request.body.comments.owner),
-    post,
-  });
-  await postOwner.save();
+  if (post.owner != request.body.comments.owner) {
+    const postOwner = await User.findById(post.owner);
+    postOwner.notifications.set(`${created}`, {
+      created,
+      action: "POST_COMMENTED",
+      user: await User.findById(request.body.comments.owner),
+      post,
+    });
+    await postOwner.save();
+  }
 
   const postWithAllData = await (
     await post.populate("owner")
@@ -176,13 +178,15 @@ app.post(
       await post.save();
 
       // Saving the notification
-      postOwner.notifications.set(`${created}`, {
-        created,
-        action: "POST_LIKED",
-        user: await User.findById(request.params.user_id),
-        post,
-      });
-      await postOwner.save();
+      if (post.owner != request.params.user_id) {
+        postOwner.notifications.set(`${created}`, {
+          created,
+          action: "POST_LIKED",
+          user: await User.findById(request.params.user_id),
+          post,
+        });
+        await postOwner.save();
+      }
 
       response.send({
         isSuccess: true,
@@ -300,6 +304,17 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "friendRequest delete ho gaya hai",
+  });
+});
+
+app.get("/get_notifications/:user_id", async (request, response) => {
+  const user = await User.findById(request.params.user_id)
+    .populate("notifications.$*.user")
+    .populate("notifications.$*.post");
+  response.send({
+    isSuccess: true,
+    message: "proife save ho gaya hai",
+    notifications: user.notifications,
   });
 });
 
