@@ -106,6 +106,7 @@ app.post("/comment", async (request, response) => {
       action: "POST_COMMENTED",
       user: await User.findById(request.body.comments.owner),
       post,
+      isSeen: false,
     });
     await postOwner.save();
   }
@@ -186,6 +187,7 @@ app.post(
           action: "POST_LIKED",
           user: await User.findById(request.params.user_id),
           post,
+          isSeen: false,
         });
         await postOwner.save();
       }
@@ -275,6 +277,7 @@ app.post("/friend_request/:user_id", async (request, response) => {
     created,
     action: "FRIEND_REQUEST",
     user: await User.findById(request.body.loggedInUserId),
+    isSeen: false,
   });
 
   await user.save();
@@ -342,5 +345,24 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
 
   request.on("close", () => {
     notificationStream.close();
+  });
+});
+
+app.post("/notfication_seen/:user_id", async (request, response) => {
+  const user = await User.findById(request.params.user_id);
+  const unreadNotifications = request.body.unreadNotifications;
+
+  unreadNotifications.forEach((unreadNotification) => {
+    const notifyKey = `${new Date(
+      new Date(unreadNotification.created)
+    ).getTime()}`;
+    const obj = user.notifications.get(`${notifyKey}`);
+    user.notifications.set(`${notifyKey}`, { ...obj._doc, isSeen: true });
+  });
+
+  await user.save();
+  response.send({
+    isSuccess: true,
+    message: "proife save ho gaya hai",
   });
 });

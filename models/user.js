@@ -45,7 +45,7 @@ const UserSchema = new Schema({
     type: Map,
     of: {
       created: { type: Date },
-      isSeen: { type: Boolean, default: false },
+      isSeen: { type: Boolean },
       action: { type: String },
       user: { type: Schema.ObjectId, ref: "User" },
       post: { type: Schema.ObjectId, ref: "Post" },
