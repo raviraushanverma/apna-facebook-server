@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 
-const PostSchema = new Schema({
+export const PostSchema = new Schema({
   content: {
     type: String,
   },
@@ -27,33 +27,21 @@ const PostSchema = new Schema({
       },
     },
   ],
-  location: {
-    latitude: {
-      type: Number,
-    },
-    longitude: {
-      type: Number,
-    },
-  },
   likes: {
     type: Map,
-    of: String,
+    of: {
+      created: { type: Date },
+      userName: { type: String },
+    },
     default: {},
     required: true,
   },
   comments: [
     {
-      id: {
-        type: String,
-      },
-      content: {
-        type: String,
-      },
+      id: { type: String },
+      content: { type: String },
       owner: { type: Schema.ObjectId, ref: "User" },
-      created: {
-        type: Date,
-        default: Date.now,
-      },
+      created: { type: Date },
     },
   ],
   owner: { type: Schema.ObjectId, ref: "User" },

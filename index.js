@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import connectDataBase from "./database.js";
 import User from "./models/user.js";
 import Post from "./models/post.js";
+import { notificationWatcher } from "./utils/notificationWatcher.js";
 
 const findFieldNameFromObject = (obj, fieldName) => {
   return Object.keys(obj).find((key) => key.includes(fieldName));
@@ -88,8 +89,22 @@ app.get("/posts", async (request, response) => {
 
 app.post("/comment", async (request, response) => {
   const post = await Post.findById(request.body.id);
-  post.comments.unshift(request.body.comments);
+  const created = Date.now();
+  post.comments.unshift({
+    ...request.body.comments,
+    created,
+  });
   await post.save();
+
+  const postOwner = await User.findById(post.owner);
+  postOwner.notifications.set(`${created}`, {
+    created,
+    action: "POST_COMMENTED",
+    user: await User.findById(request.body.comments.owner),
+    post,
+  });
+  await postOwner.save();
+
   const postWithAllData = await (
     await post.populate("owner")
   ).populate("comments.owner");
@@ -107,8 +122,22 @@ app.delete(
     const comment_id = post.comments.findIndex((comment) => {
       return request.params.comment_id == comment._id;
     });
+
+    // Deleting Notification
+    const postOwner = await User.findById(post.owner);
+    const { created } = post.comments[comment_id];
+    const notifyKey = `${new Date(new Date(created)).getTime()}`;
+    if (
+      postOwner.notifications.get(notifyKey) &&
+      !postOwner.notifications.get(notifyKey).isSeen
+    ) {
+      postOwner.notifications.delete(notifyKey);
+      await postOwner.save();
+    }
+
     post.comments.splice(comment_id, 1);
     await post.save();
+
     response.send({
       isSuccess: true,
       message: "commented deleted ho gaya hai",
@@ -133,16 +162,40 @@ app.post(
   "/post_like/:post_id/:user_id/:user_name",
   async (request, response) => {
     const post = await Post.findById(request.params.post_id);
+    const postOwner = await User.findById(post.owner);
     const keyCheck = post.likes.has(request.params.user_id);
     if (keyCheck === false) {
-      post.likes.set(request.params.user_id, request.params.user_name);
+      const created = Date.now();
+      post.likes.set(request.params.user_id, {
+        created,
+        userName: request.params.user_name,
+      });
       await post.save();
+
+      // Saving the notification
+      postOwner.notifications.set(`${created}`, {
+        created,
+        action: "POST_LIKED",
+        user: await User.findById(request.params.user_id),
+        post,
+      });
+      await postOwner.save();
+
       response.send({
         isSuccess: true,
         message: "post like ho gaya hai",
       });
     } else {
+      const { created } = post.likes.get(request.params.user_id);
+      const notifyKey = `${new Date(new Date(created)).getTime()}`;
       post.likes.delete(request.params.user_id);
+      if (
+        postOwner.notifications.get(notifyKey) &&
+        !postOwner.notifications.get(notifyKey).isSeen
+      ) {
+        postOwner.notifications.delete(notifyKey);
+        await postOwner.save();
+      }
       await post.save();
       response.send({
         isSuccess: false,
@@ -203,11 +256,47 @@ app.post("/profile_update/:user_id", async (request, response) => {
 
 app.post("/friend_request/:user_id", async (request, response) => {
   const user = await User.findById(request.params.user_id);
-  user.friendRequests.push(request.body.loggedInUserId);
+  const created = Date.now();
+  user.friendRequests.push({
+    created,
+    friend: request.body.loggedInUserId,
+  });
+
+  user.notifications.set(`${created}`, {
+    created,
+    action: "FRIEND_REQUEST",
+    user: await User.findById(request.body.loggedInUserId),
+  });
+
   await user.save();
   response.send({
     isSuccess: true,
     message: "friendRequest save ho gaya hai",
+  });
+});
+
+app.post("/friend_request_cancel/:user_id", async (request, response) => {
+  const user = await User.findById(request.params.user_id);
+  const fr_index = user.friendRequests.findIndex((fbRequest) => {
+    return fbRequest.friend == request.body.loggedInUserId;
+  });
+
+  // Deleting Notification
+  const { created } = user.friendRequests[fr_index];
+  const notifyKey = `${new Date(new Date(created)).getTime()}`;
+  if (
+    user.notifications.get(notifyKey) &&
+    !user.notifications.get(notifyKey).isSeen
+  ) {
+    user.notifications.delete(notifyKey);
+  }
+
+  user.friendRequests.splice(fr_index, 1);
+  await user.save();
+
+  response.send({
+    isSuccess: true,
+    message: "friendRequest delete ho gaya hai",
   });
 });
 
@@ -224,71 +313,14 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
     Connection: "keep-alive",
   });
 
-  response.write(`data: ${JSON.stringify({})}\n\n`);
+  response.write(`data: ${JSON.stringify(null)}\n\n`);
 
-  request.on("close", () => {});
-
-  const pipeline = [
-    {
-      $match: {
-        $or: [{ operationType: "insert" }, { operationType: "update" }],
-      },
-    },
-  ];
-
-  User.watch(pipeline).on("change", async (changes) => {
-    const updatedFieldsObject = changes.updateDescription?.updatedFields;
-    if (updatedFieldsObject && Object.keys(updatedFieldsObject).length) {
-      const userId = changes.documentKey._id;
-      if (userId == logged_in_user_id) {
-        const friendRequestFieldKeyName = findFieldNameFromObject(
-          updatedFieldsObject,
-          "friendRequests"
-        );
-        const data = {
-          action: "FRIEND_REQUEST",
-          user: await User.findById(
-            updatedFieldsObject[friendRequestFieldKeyName]
-          ),
-        };
-        response.write(`data: ${JSON.stringify(data)}\n\n`);
-      }
-    }
+  const notificationStream = notificationWatcher({
+    loggedInUserId: logged_in_user_id,
+    response,
   });
 
-  Post.watch(pipeline).on("change", async (changes) => {
-    const updatedFieldsObject = changes.updateDescription?.updatedFields;
-    if (updatedFieldsObject && Object.keys(updatedFieldsObject).length) {
-      const postId = changes.documentKey._id;
-      const post = await Post.findById(postId);
-      if (post.owner == logged_in_user_id) {
-        const likeFieldName = findFieldNameFromObject(
-          updatedFieldsObject,
-          "likes"
-        );
-        if (likeFieldName) {
-          const data = {
-            action: "POST_LIKED",
-            user: await User.findById(likeFieldName.split(".")[1]),
-            post: post,
-          };
-          response.write(`data: ${JSON.stringify(data)}\n\n`);
-        }
-        const commentFieldName = findFieldNameFromObject(
-          updatedFieldsObject,
-          "comments"
-        );
-        if (commentFieldName) {
-          const data = {
-            action: "POST_COMMENTED",
-            user: await User.findById(
-              updatedFieldsObject[commentFieldName][0].owner
-            ),
-            post: post,
-          };
-          response.write(`data: ${JSON.stringify(data)}\n\n`);
-        }
-      }
-    }
+  request.on("close", () => {
+    notificationStream.close();
   });
 });
