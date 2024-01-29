@@ -50,7 +50,10 @@ app.post("/login", async (request, response) => {
   const user = await User.findOne({
     email: request.body.email,
     password: request.body.password,
-  });
+  })
+    .populate("notifications.$*.user")
+    .populate("notifications.$*.post");
+
   if (user !== null) {
     response.send({
       isSuccess: true,
