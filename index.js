@@ -123,7 +123,9 @@ app.post("/comment", async (request, response) => {
 app.delete(
   "/comment_delete/:post_id/:comment_id",
   async (request, response) => {
-    const post = await Post.findById(request.params.post_id);
+    const post = await Post.findById(request.params.post_id)
+      .populate("owner")
+      .populate("comments.owner");
     const comment_id = post.comments.findIndex((comment) => {
       return request.params.comment_id == comment._id;
     });
