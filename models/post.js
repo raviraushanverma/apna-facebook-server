@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { mediaType } from "../utils/helper.js";
 
 export const PostSchema = new Schema({
   content: {
@@ -8,33 +9,16 @@ export const PostSchema = new Schema({
     type: Date,
     default: Date.now,
   },
-  medias: [
-    {
-      _id: String,
-      asset_id: String,
-      resource_type: String,
-      secure_url: String,
-      url: String,
-    },
-  ],
-  taggedFriends: [
-    {
-      id: {
-        type: String,
-      },
-      friend: {
-        type: String,
-      },
-    },
-  ],
+  medias: [mediaType],
   likes: {
     type: Map,
+    default: {},
+    required: true,
     of: {
       created: { type: Date },
       userName: { type: String },
+      notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
-    default: {},
-    required: true,
   },
   comments: [
     {
@@ -42,6 +26,7 @@ export const PostSchema = new Schema({
       content: { type: String },
       owner: { type: Schema.ObjectId, ref: "User" },
       created: { type: Date },
+      notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
   ],
   owner: { type: Schema.ObjectId, ref: "User" },

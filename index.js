@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import connectDataBase from "./database.js";
 import User from "./models/user.js";
 import Post from "./models/post.js";
+import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
 
 const findFieldNameFromObject = (obj, fieldName) => {
@@ -91,29 +92,33 @@ app.get("/posts", async (request, response) => {
 });
 
 app.post("/comment", async (request, response) => {
-  const post = await Post.findById(request.body.id);
+  const post = await Post.findById(request.body.postId);
   const created = Date.now();
-  post.comments.unshift({
+  const commentObj = {
     ...request.body.comments,
     created,
-  });
+  };
+
+  post.comments.unshift(commentObj);
   await post.save();
 
   if (post.owner != request.body.comments.owner) {
-    const postOwner = await User.findById(post.owner);
-    postOwner.notifications.set(`${created}`, {
+    const newNotification = await Notification.create({
+      owner: post.owner,
       created,
       action: "POST_COMMENTED",
-      user: await User.findById(request.body.comments.owner),
-      post,
-      isSeen: false,
+      user: request.body.comments.owner,
+      post: request.body.postId,
+      comment: post.comments[0]._id,
     });
-    await postOwner.save();
+    post.comments[0].notificationId = newNotification._id;
   }
 
+  await post.save();
   const postWithAllData = await (
     await post.populate("owner")
   ).populate("comments.owner");
+
   response.send({
     isSuccess: true,
     message: "data save ho gaya",
@@ -127,23 +132,16 @@ app.delete(
     const post = await Post.findById(request.params.post_id)
       .populate("owner")
       .populate("comments.owner");
-    const comment_id = post.comments.findIndex((comment) => {
+    const commentIndex = post.comments.findIndex((comment) => {
       return request.params.comment_id == comment._id;
     });
 
     // Deleting Notification
-    const postOwner = await User.findById(post.owner);
-    const { created } = post.comments[comment_id];
-    const notifyKey = `${new Date(new Date(created)).getTime()}`;
-    if (
-      postOwner.notifications.get(notifyKey) &&
-      !postOwner.notifications.get(notifyKey).isSeen
-    ) {
-      postOwner.notifications.delete(notifyKey);
-      await postOwner.save();
-    }
+    await Notification.deleteOne({
+      _id: post.comments[commentIndex].notificationId,
+    });
 
-    post.comments.splice(comment_id, 1);
+    post.comments.splice(commentIndex, 1);
     await post.save();
 
     response.send({
@@ -170,49 +168,35 @@ app.post(
   "/post_like/:post_id/:user_id/:user_name",
   async (request, response) => {
     const post = await Post.findById(request.params.post_id);
-    const postOwner = await User.findById(post.owner);
-    const keyCheck = post.likes.has(request.params.user_id);
-    if (keyCheck === false) {
-      const created = Date.now();
-      post.likes.set(request.params.user_id, {
+    const created = Date.now();
+    const isLiked = post.likes.has(request.params.user_id);
+    if (isLiked === false) {
+      const likeObject = {
         created,
         userName: request.params.user_name,
-      });
-      await post.save();
-
-      // Saving the notification
+      };
       if (post.owner != request.params.user_id) {
-        postOwner.notifications.set(`${created}`, {
+        const newNotification = await Notification.create({
+          owner: post.owner,
           created,
           action: "POST_LIKED",
-          user: await User.findById(request.params.user_id),
-          post,
-          isSeen: false,
+          user: request.params.user_id,
+          post: request.params.post_id,
         });
-        await postOwner.save();
+        likeObject.notificationId = newNotification._id;
       }
-
-      response.send({
-        isSuccess: true,
-        message: "post like ho gaya hai",
-      });
+      post.likes.set(request.params.user_id, likeObject);
     } else {
-      const { created } = post.likes.get(request.params.user_id);
-      const notifyKey = `${new Date(new Date(created)).getTime()}`;
-      post.likes.delete(request.params.user_id);
-      if (
-        postOwner.notifications.get(notifyKey) &&
-        !postOwner.notifications.get(notifyKey).isSeen
-      ) {
-        postOwner.notifications.delete(notifyKey);
-        await postOwner.save();
-      }
-      await post.save();
-      response.send({
-        isSuccess: false,
-        message: "post like delete ho gaya hai",
+      await Notification.deleteOne({
+        _id: post.likes.get(request.params.user_id).notificationId,
       });
+      post.likes.delete(request.params.user_id);
     }
+    await post.save();
+    response.send({
+      isSuccess: true,
+      message: "post like ho gaya hai",
+    });
   }
 );
 
@@ -255,29 +239,28 @@ app.get("/get_user/:user_id", async (request, response) => {
 });
 
 app.post("/profile_update/:user_id", async (request, response) => {
-  const user = await User.updateOne(
-    { _id: request.params.user_id },
-    request.body
-  );
+  await User.updateOne({ _id: request.params.user_id }, request.body);
   response.send({
     isSuccess: true,
     message: "proife save ho gaya hai",
   });
 });
 
-app.post("/friend_request/:user_id", async (request, response) => {
+app.post("/friend_request_send/:user_id", async (request, response) => {
   const user = await User.findById(request.params.user_id);
   const created = Date.now();
-  user.friendRequests.push({
+
+  const newNotification = await Notification.create({
+    owner: request.params.user_id,
     created,
-    friend: request.body.loggedInUserId,
+    action: "FRIEND_REQUEST_SENT",
+    user: request.body.loggedInUserId,
   });
 
-  user.notifications.set(`${created}`, {
+  user.friendRequests.unshift({
     created,
-    action: "FRIEND_REQUEST",
-    user: await User.findById(request.body.loggedInUserId),
-    isSeen: false,
+    friend: request.body.loggedInUserId,
+    notificationId: newNotification._id,
   });
 
   await user.save();
@@ -295,18 +278,12 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
   });
 
   // Deleting Notification
-  const { created } = user.friendRequests[fr_index];
-  const notifyKey = `${new Date(new Date(created)).getTime()}`;
-  if (
-    user.notifications.get(notifyKey) &&
-    !user.notifications.get(notifyKey).isSeen
-  ) {
-    user.notifications.delete(notifyKey);
-  }
+  await Notification.deleteOne({
+    _id: user.friendRequests[fr_index].notificationId,
+  });
 
   user.friendRequests.splice(fr_index, 1);
   await user.save();
-
   response.send({
     isSuccess: true,
     message: "friendRequest delete ho gaya hai",
@@ -314,14 +291,28 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
   });
 });
 
-app.get("/get_notifications/:user_id", async (request, response) => {
-  const user = await User.findById(request.params.user_id)
-    .populate("notifications.$*.user")
-    .populate("notifications.$*.post");
+app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
+  let notifications;
+  if (request.params.limit) {
+    notifications = await Notification.find({
+      owner: request.params.user_id,
+    })
+      .populate("user")
+      .populate("post")
+      .limit(request.params.limit)
+      .sort({ created: -1 });
+  } else {
+    notifications = await Notification.find({
+      owner: request.params.user_id,
+    })
+      .populate("user")
+      .populate("post")
+      .sort({ created: -1 });
+  }
   response.send({
     isSuccess: true,
-    message: "proife save ho gaya hai",
-    notifications: user.notifications,
+    message: "notifications aa gaya hai",
+    notifications,
   });
 });
 
@@ -351,18 +342,9 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
 });
 
 app.post("/notfication_seen/:user_id", async (request, response) => {
-  const user = await User.findById(request.params.user_id);
-  const unreadNotifications = request.body.unreadNotifications;
-
-  unreadNotifications.forEach((unreadNotification) => {
-    const notifyKey = `${new Date(
-      new Date(unreadNotification.created)
-    ).getTime()}`;
-    const obj = user.notifications.get(`${notifyKey}`);
-    user.notifications.set(`${notifyKey}`, { ...obj._doc, isSeen: true });
-  });
-
-  await user.save();
+  for (const notify of request.body.unreadNotificationsIdArray) {
+    await Notification.updateOne({ _id: notify._id }, { isRead: true });
+  }
   response.send({
     isSuccess: true,
     message: "proife save ho gaya hai",

@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { mediaType } from "../utils/helper.js";
 
 const UserSchema = new Schema({
   name: {
@@ -17,42 +18,23 @@ const UserSchema = new Schema({
   password: {
     type: String,
   },
-  profilePicURL: {
-    asset_id: String,
-    resource_type: String,
-    secure_url: String,
-    url: String,
-  },
-  banner: {
-    asset_id: String,
-    resource_type: String,
-    secure_url: String,
-    url: String,
-  },
+  profilePicURL: mediaType,
+  banner: mediaType,
   friendRequests: [
     {
       created: { type: Date },
       friend: { type: Schema.ObjectId, ref: "User" },
+      notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
   ],
   friendLists: [
     {
       created: { type: Date },
       friend: { type: Schema.ObjectId, ref: "User" },
+      notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
   ],
-  notifications: {
-    type: Map,
-    of: {
-      created: { type: Date },
-      isSeen: { type: Boolean },
-      action: { type: String },
-      user: { type: Schema.ObjectId, ref: "User" },
-      post: { type: Schema.ObjectId, ref: "Post" },
-    },
-    default: {},
-    required: true,
-  },
+  notifications: {},
 });
 
 const User = model("User", UserSchema);
