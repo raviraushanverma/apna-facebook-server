@@ -341,7 +341,7 @@ app.get("/notification/:logged_in_user_id", async (request, response) => {
   });
 });
 
-app.post("/notfication_seen/:user_id", async (request, response) => {
+app.post("/notfication_read/:user_id", async (request, response) => {
   for (const notify of request.body.unreadNotificationsIdArray) {
     await Notification.updateOne({ _id: notify._id }, { isRead: true });
   }
