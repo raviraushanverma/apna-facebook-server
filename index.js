@@ -284,6 +284,7 @@ app.post("/friend_request/:user_id", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "friendRequest save ho gaya hai",
+    user: user,
   });
 });
 
@@ -309,6 +310,7 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "friendRequest delete ho gaya hai",
+    user,
   });
 });
 
