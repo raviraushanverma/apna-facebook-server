@@ -7,10 +7,6 @@ import Post from "./models/post.js";
 import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
 
-const findFieldNameFromObject = (obj, fieldName) => {
-  return Object.keys(obj).find((key) => key.includes(fieldName));
-};
-
 connectDataBase();
 
 const app = express();
@@ -51,9 +47,7 @@ app.post("/login", async (request, response) => {
   const user = await User.findOne({
     email: request.body.email,
     password: request.body.password,
-  })
-    .populate("notifications.$*.user")
-    .populate("notifications.$*.post");
+  });
 
   if (user !== null) {
     response.send({
@@ -257,7 +251,7 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
     user: request.body.loggedInUserId,
   });
 
-  user.friendRequests.unshift({
+  user.friendRequests.set(request.body.loggedInUserId, {
     created,
     friend: request.body.loggedInUserId,
     notificationId: newNotification._id,
@@ -273,16 +267,13 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
 
 app.post("/friend_request_cancel/:user_id", async (request, response) => {
   const user = await User.findById(request.params.user_id);
-  const fr_index = user.friendRequests.findIndex((fbRequest) => {
-    return fbRequest.friend == request.body.loggedInUserId;
-  });
 
   // Deleting Notification
   await Notification.deleteOne({
-    _id: user.friendRequests[fr_index].notificationId,
+    _id: user.friendRequests.get(request.body.loggedInUserId).notificationId,
   });
 
-  user.friendRequests.splice(fr_index, 1);
+  user.friendRequests.delete(request.body.loggedInUserId);
   await user.save();
   response.send({
     isSuccess: true,

@@ -20,21 +20,26 @@ const UserSchema = new Schema({
   },
   profilePicURL: mediaType,
   banner: mediaType,
-  friendRequests: [
-    {
+  friendRequests: {
+    type: Map,
+    default: {},
+    required: true,
+    of: {
       created: { type: Date },
       friend: { type: Schema.ObjectId, ref: "User" },
       notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
-  ],
-  friendLists: [
-    {
+  },
+  friendLists: {
+    type: Map,
+    default: {},
+    required: true,
+    of: {
       created: { type: Date },
       friend: { type: Schema.ObjectId, ref: "User" },
       notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
-  ],
-  notifications: {},
+  },
 });
 
 const User = model("User", UserSchema);
