@@ -87,63 +87,77 @@ app.get("/posts", async (request, response) => {
 });
 
 app.post("/comment", async (request, response) => {
-  const post = await Post.findById(request.body.postId);
-  const created = Date.now();
-  const commentObj = {
-    ...request.body.comments,
-    created,
-  };
-
-  post.comments.unshift(commentObj);
-  await post.save();
-
-  if (post.owner != request.body.comments.owner) {
-    const newNotification = await Notification.create({
-      owner: post.owner,
+  try {
+    const post = await Post.findById(request.body.postId);
+    const created = Date.now();
+    const commentObj = {
+      ...request.body.comments,
       created,
-      action: "POST_COMMENTED",
-      user: request.body.comments.owner,
-      post: request.body.postId,
-      comment: post.comments[0]._id,
+    };
+
+    post.comments.unshift(commentObj);
+    await post.save();
+
+    if (post.owner != request.body.comments.owner) {
+      const newNotification = await Notification.create({
+        owner: post.owner,
+        created,
+        action: "POST_COMMENTED",
+        user: request.body.comments.owner,
+        post: request.body.postId,
+        comment: post.comments[0]._id,
+      });
+      post.comments[0].notificationId = newNotification._id;
+    }
+
+    await post.save();
+    const postWithAllData = await (
+      await post.populate("owner")
+    ).populate("comments.owner");
+
+    response.send({
+      isSuccess: true,
+      message: "data save ho gaya",
+      post: postWithAllData,
     });
-    post.comments[0].notificationId = newNotification._id;
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
   }
-
-  await post.save();
-  const postWithAllData = await (
-    await post.populate("owner")
-  ).populate("comments.owner");
-
-  response.send({
-    isSuccess: true,
-    message: "data save ho gaya",
-    post: postWithAllData,
-  });
 });
 
 app.delete(
   "/comment_delete/:post_id/:comment_id",
   async (request, response) => {
-    const post = await Post.findById(request.params.post_id)
-      .populate("owner")
-      .populate("comments.owner");
-    const commentIndex = post.comments.findIndex((comment) => {
-      return request.params.comment_id == comment._id;
-    });
+    try {
+      const post = await Post.findById(request.params.post_id)
+        .populate("owner")
+        .populate("comments.owner");
+      const commentIndex = post.comments.findIndex((comment) => {
+        return request.params.comment_id == comment._id;
+      });
 
-    // Deleting Notification
-    await Notification.deleteOne({
-      _id: post.comments[commentIndex].notificationId,
-    });
+      // Deleting Notification
+      await Notification.deleteOne({
+        _id: post.comments[commentIndex].notificationId,
+      });
 
-    post.comments.splice(commentIndex, 1);
-    await post.save();
+      post.comments.splice(commentIndex, 1);
+      await post.save();
 
-    response.send({
-      isSuccess: true,
-      message: "commented deleted ho gaya hai",
-      post: post,
-    });
+      response.send({
+        isSuccess: true,
+        message: "commented deleted ho gaya hai",
+        post: post,
+      });
+    } catch (error) {
+      response.send({
+        isSuccess: false,
+        message: `Error: ${error}`,
+      });
+    }
   }
 );
 
