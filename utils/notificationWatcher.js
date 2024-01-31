@@ -20,7 +20,7 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
     const newNotification = await Notification.findById(change.fullDocument._id)
       .populate("user")
       .populate("post");
-    response.write(`data: ${JSON.stringify(newNotification)}\n\n`);
+    response.write(`data: ${JSON.stringify({ newNotification })}\n\n`);
   });
 
   return notificationStream;

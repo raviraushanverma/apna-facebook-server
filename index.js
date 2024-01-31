@@ -6,6 +6,7 @@ import User from "./models/user.js";
 import Post from "./models/post.js";
 import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
+import { postWatcher } from "./utils/postWatcher.js";
 
 connectDataBase();
 
@@ -329,8 +330,14 @@ app.get(
       response,
     });
 
+    const postStream = postWatcher({
+      loggedInUserId: logged_in_user_id,
+      response,
+    });
+
     request.on("close", () => {
       notificationStream.close();
+      postStream.close();
     });
   }
 );
