@@ -28,62 +28,90 @@ app.get("/", async (request, response) => {
 });
 
 app.post("/sign_up", async (request, response) => {
-  const user = await User.findOne({ email: request.body.email });
-  if (user === null) {
-    const user = await User.create(request.body);
-    response.send({
-      isSuccess: true,
-      message: "apka account create ho gaya hai",
-      user: user,
-    });
-  } else {
+  try {
+    const user = await User.findOne({ email: request.body.email });
+    if (user === null) {
+      const user = await User.create(request.body);
+      response.send({
+        isSuccess: true,
+        message: "apka account create ho gaya hai",
+        user: user,
+      });
+    } else {
+      response.send({
+        isSuccess: false,
+        message: "apka ye email se already account created hai ",
+      });
+    }
+  } catch (error) {
     response.send({
       isSuccess: false,
-      message: "apka ye email se already account created hai ",
+      message: `Error: ${error}`,
     });
   }
 });
 
 app.post("/login", async (request, response) => {
-  const user = await User.findOne({
-    email: request.body.email,
-    password: request.body.password,
-  });
-
-  if (user !== null) {
-    response.send({
-      isSuccess: true,
-      messsage: "app login ho chuke hai",
-      user: user,
+  try {
+    const user = await User.findOne({
+      email: request.body.email,
+      password: request.body.password,
     });
-  } else {
+
+    if (user !== null) {
+      response.send({
+        isSuccess: true,
+        messsage: "app login ho chuke hai",
+        user: user,
+      });
+    } else {
+      response.send({
+        isSuccess: false,
+        message: "incorrect email or password",
+      });
+    }
+  } catch (error) {
     response.send({
       isSuccess: false,
-      message: "incorrect email or password",
+      message: `Error: ${error}`,
     });
   }
 });
 
 app.post("/post", async (request, response) => {
-  const post = await Post.create(request.body);
-  const postWithOwner = await post.populate("owner");
-  response.send({
-    isSuccess: true,
-    message: "apka post success ho gaya hai",
-    post: postWithOwner,
-  });
+  try {
+    const post = await Post.create(request.body);
+    const postWithOwner = await post.populate("owner");
+    response.send({
+      isSuccess: true,
+      message: "apka post success ho gaya hai",
+      post: postWithOwner,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.get("/posts", async (request, response) => {
-  const posts = await Post.find()
-    .populate("owner")
-    .populate("comments.owner")
-    .sort({ created: -1 });
-  response.send({
-    isSuccess: true,
-    message: "data aa gaya",
-    posts: posts,
-  });
+  try {
+    const posts = await Post.find()
+      .populate("owner")
+      .populate("comments.owner")
+      .sort({ created: -1 });
+    response.send({
+      isSuccess: true,
+      message: "data aa gaya",
+      posts: posts,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.post("/comment", async (request, response) => {
@@ -162,213 +190,297 @@ app.delete(
 );
 
 app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
-  const post = await Post.deleteOne({
-    _id: request.params.post_id,
-    owner: request.params.user_id,
-  });
+  try {
+    const post = await Post.deleteOne({
+      _id: request.params.post_id,
+      owner: request.params.user_id,
+    });
 
-  response.send({
-    isSuccess: true,
-    message: "post delete ho gaya hai",
-  });
+    response.send({
+      isSuccess: true,
+      message: "post delete ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.post(
   "/post_like/:post_id/:user_id/:user_name",
   async (request, response) => {
-    const post = await Post.findById(request.params.post_id);
-    const created = Date.now();
-    const isLiked = post.likes.has(request.params.user_id);
-    if (isLiked === false) {
-      const likeObject = {
-        created,
-        userName: request.params.user_name,
-      };
-      if (post.owner != request.params.user_id) {
-        const newNotification = await Notification.create({
-          owner: post.owner,
+    try {
+      const post = await Post.findById(request.params.post_id);
+      const created = Date.now();
+      const isLiked = post.likes.has(request.params.user_id);
+      if (isLiked === false) {
+        const likeObject = {
           created,
-          action: "POST_LIKED",
-          user: request.params.user_id,
-          post: request.params.post_id,
+          userName: request.params.user_name,
+        };
+        if (post.owner != request.params.user_id) {
+          const newNotification = await Notification.create({
+            owner: post.owner,
+            created,
+            action: "POST_LIKED",
+            user: request.params.user_id,
+            post: request.params.post_id,
+          });
+          likeObject.notificationId = newNotification._id;
+        }
+        post.likes.set(request.params.user_id, likeObject);
+      } else {
+        await Notification.deleteOne({
+          _id: post.likes.get(request.params.user_id).notificationId,
         });
-        likeObject.notificationId = newNotification._id;
+        post.likes.delete(request.params.user_id);
       }
-      post.likes.set(request.params.user_id, likeObject);
-    } else {
-      await Notification.deleteOne({
-        _id: post.likes.get(request.params.user_id).notificationId,
+      await post.save();
+      response.send({
+        isSuccess: true,
+        message: "post like ho gaya hai",
       });
-      post.likes.delete(request.params.user_id);
+    } catch (error) {
+      response.send({
+        isSuccess: false,
+        message: `Error: ${error}`,
+      });
     }
-    await post.save();
-    response.send({
-      isSuccess: true,
-      message: "post like ho gaya hai",
-    });
   }
 );
 
 app.post("/comment_edit/:post_id/:comment_id", async (request, response) => {
-  const post = await Post.findById(request.params.post_id);
-  const index = post.comments.findIndex((element) => {
-    return element._id == request.params.comment_id;
-  });
+  try {
+    const post = await Post.findById(request.params.post_id);
+    const index = post.comments.findIndex((element) => {
+      return element._id == request.params.comment_id;
+    });
 
-  post.comments[index].content = request.body.content;
-  await post.save();
+    post.comments[index].content = request.body.content;
+    await post.save();
 
-  response.send({
-    isSuccess: true,
-    message: "edit ho gaya hai",
-  });
+    response.send({
+      isSuccess: true,
+      message: "edit ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.get("/profile_post/:user_id", async (request, response) => {
-  const posts = await Post.find({
-    owner: request.params.user_id,
-  })
-    .populate("owner")
-    .populate("comments.owner")
-    .sort({ created: -1 });
-  response.send({
-    isSuccess: true,
-    message: "data aa gaya",
-    posts: posts,
-  });
+  try {
+    const posts = await Post.find({
+      owner: request.params.user_id,
+    })
+      .populate("owner")
+      .populate("comments.owner")
+      .sort({ created: -1 });
+    response.send({
+      isSuccess: true,
+      message: "data aa gaya",
+      posts: posts,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.get("/get_user/:user_id", async (request, response) => {
-  const user = await User.findById(request.params.user_id);
-  response.send({
-    isSuccess: true,
-    message: "data aa gaya",
-    user: user,
-  });
+  try {
+    const user = await User.findById(request.params.user_id);
+    response.send({
+      isSuccess: true,
+      message: "data aa gaya",
+      user: user,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.post("/profile_update/:user_id", async (request, response) => {
-  await User.updateOne({ _id: request.params.user_id }, request.body);
-  response.send({
-    isSuccess: true,
-    message: "proife save ho gaya hai",
-  });
+  try {
+    await User.updateOne({ _id: request.params.user_id }, request.body);
+    response.send({
+      isSuccess: true,
+      message: "proife save ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.post("/friend_request_send/:user_id", async (request, response) => {
-  const user = await User.findById(request.params.user_id);
-  const created = Date.now();
+  try {
+    const user = await User.findById(request.params.user_id);
+    const created = Date.now();
 
-  const newNotification = await Notification.create({
-    owner: request.params.user_id,
-    created,
-    action: "FRIEND_REQUEST_SENT",
-    user: request.body.loggedInUserId,
-  });
+    const newNotification = await Notification.create({
+      owner: request.params.user_id,
+      created,
+      action: "FRIEND_REQUEST_SENT",
+      user: request.body.loggedInUserId,
+    });
 
-  user.friendRequests.set(request.body.loggedInUserId, {
-    created,
-    friend: request.body.loggedInUserId,
-    notificationId: newNotification._id,
-  });
+    user.friendRequests.set(request.body.loggedInUserId, {
+      created,
+      friend: request.body.loggedInUserId,
+      notificationId: newNotification._id,
+    });
 
-  await user.save();
-  response.send({
-    isSuccess: true,
-    message: "friendRequest save ho gaya hai",
-    user: user,
-  });
+    await user.save();
+    response.send({
+      isSuccess: true,
+      message: "friendRequest save ho gaya hai",
+      user: user,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.post("/friend_request_cancel/:user_id", async (request, response) => {
-  const user = await User.findById(request.params.user_id);
+  try {
+    const user = await User.findById(request.params.user_id);
 
-  // Deleting Notification
-  await Notification.deleteOne({
-    _id: user.friendRequests.get(request.body.loggedInUserId).notificationId,
-  });
+    // Deleting Notification
+    await Notification.deleteOne({
+      _id: user.friendRequests.get(request.body.loggedInUserId).notificationId,
+    });
 
-  user.friendRequests.delete(request.body.loggedInUserId);
-  await user.save();
-  response.send({
-    isSuccess: true,
-    message: "friendRequest delete ho gaya hai",
-    user,
-  });
+    user.friendRequests.delete(request.body.loggedInUserId);
+    await user.save();
+    response.send({
+      isSuccess: true,
+      message: "friendRequest delete ho gaya hai",
+      user,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
 
 app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
-  let notifications;
-  if (request.params.limit) {
-    notifications = await Notification.find({
-      owner: request.params.user_id,
-    })
-      .populate("user")
-      .populate("post")
-      .limit(request.params.limit)
-      .sort({ created: -1 });
-  } else {
-    notifications = await Notification.find({
-      owner: request.params.user_id,
-    })
-      .populate("user")
-      .populate("post")
-      .sort({ created: -1 });
+  try {
+    let notifications;
+    if (request.params.limit) {
+      notifications = await Notification.find({
+        owner: request.params.user_id,
+      })
+        .populate("user")
+        .populate("post")
+        .limit(request.params.limit)
+        .sort({ created: -1 });
+    } else {
+      notifications = await Notification.find({
+        owner: request.params.user_id,
+      })
+        .populate("user")
+        .populate("post")
+        .sort({ created: -1 });
+    }
+    response.send({
+      isSuccess: true,
+      message: "notifications aa gaya hai",
+      notifications,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
   }
-  response.send({
-    isSuccess: true,
-    message: "notifications aa gaya hai",
-    notifications,
-  });
 });
 
 // SERVER SENT EVENT (SSE)
 app.get(
   "/subscribe_for_events/:logged_in_user_id",
   async (request, response) => {
-    const { logged_in_user_id } = request.params;
+    try {
+      const { logged_in_user_id } = request.params;
 
-    response.writeHead(200, {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Content-Encoding": "none",
-      "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no",
-      "Access-Control-Allow-Origin": "*",
-      Connection: "keep-alive",
-    });
+      response.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Content-Encoding": "none",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        "Access-Control-Allow-Origin": "*",
+        Connection: "keep-alive",
+      });
 
-    response.write(`data: ${JSON.stringify(null)}\n\n`);
+      response.write(`data: ${JSON.stringify(null)}\n\n`);
 
-    const notificationStream = notificationWatcher({
-      loggedInUserId: logged_in_user_id,
-      response,
-    });
+      const notificationStream = notificationWatcher({
+        loggedInUserId: logged_in_user_id,
+        response,
+      });
 
-    const postStream = postWatcher({
-      loggedInUserId: logged_in_user_id,
-      response,
-    });
+      const postStream = postWatcher({
+        loggedInUserId: logged_in_user_id,
+        response,
+      });
 
-    request.on("close", () => {
-      notificationStream.close();
-      postStream.close();
-    });
+      request.on("close", () => {
+        notificationStream.close();
+        postStream.close();
+      });
+    } catch (error) {
+      response.send({
+        isSuccess: false,
+        message: `Error: ${error}`,
+      });
+    }
   }
 );
 
 app.post("/notfication_read/:user_id", async (request, response) => {
-  for (const notify of request.body.unreadNotificationsIdArray) {
-    await Notification.updateOne({ _id: notify._id }, { isRead: true });
+  try {
+    for (const notify of request.body.unreadNotificationsIdArray) {
+      await Notification.updateOne({ _id: notify._id }, { isRead: true });
+    }
+    response.send({
+      isSuccess: true,
+      message: "proife save ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
   }
-  response.send({
-    isSuccess: true,
-    message: "proife save ho gaya hai",
-  });
 });
 
 app.post("/friend_request_accept/:user_id", async (request, response) => {
-  response.send({
-    isSuccess: true,
-    message: "proife save ho gaya hai",
-  });
+  try {
+    response.send({
+      isSuccess: true,
+      message: "proife save ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
 });
