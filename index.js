@@ -31,15 +31,15 @@ app.post("/sign_up", async (request, response) => {
   try {
     const user = await User.findOne({ email: request.body.email });
     if (user === null) {
-      const user = await User.create(request.body);
+      const userObj = await User.create(request.body);
       response.send({
         isSuccess: true,
         message: "apka account create ho gaya hai",
-        user: user,
+        user: userObj,
       });
     } else {
       response.send({
-        isSuccess: false,
+        isSuccess: true,
         message: "apka ye email se already account created hai ",
       });
     }
@@ -66,7 +66,7 @@ app.post("/login", async (request, response) => {
       });
     } else {
       response.send({
-        isSuccess: false,
+        isSuccess: true,
         message: "incorrect email or password",
       });
     }
@@ -296,7 +296,10 @@ app.get("/profile_post/:user_id", async (request, response) => {
 
 app.get("/get_user/:user_id", async (request, response) => {
   try {
-    const user = await User.findById(request.params.user_id);
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
     response.send({
       isSuccess: true,
       message: "data aa gaya",
@@ -327,7 +330,10 @@ app.post("/profile_update/:user_id", async (request, response) => {
 
 app.post("/friend_request_send/:user_id", async (request, response) => {
   try {
-    const user = await User.findById(request.params.user_id);
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
     const created = Date.now();
 
     const newNotification = await Notification.create({
@@ -359,7 +365,10 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
 
 app.post("/friend_request_cancel/:user_id", async (request, response) => {
   try {
-    const user = await User.findById(request.params.user_id);
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
 
     // Deleting Notification
     await Notification.deleteOne({
@@ -388,7 +397,7 @@ app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
       notifications = await Notification.find({
         owner: request.params.user_id,
       })
-        .populate("user")
+        .populate("user", "-email -password")
         .populate("post")
         .limit(request.params.limit)
         .sort({ created: -1 });
@@ -396,7 +405,7 @@ app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
       notifications = await Notification.find({
         owner: request.params.user_id,
       })
-        .populate("user")
+        .populate("user", "-email -password")
         .populate("post")
         .sort({ created: -1 });
     }
