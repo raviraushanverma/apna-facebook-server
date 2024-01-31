@@ -308,34 +308,44 @@ app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
 });
 
 // SERVER SENT EVENT (SSE)
-app.get("/notification/:logged_in_user_id", async (request, response) => {
-  const { logged_in_user_id } = request.params;
+app.get(
+  "/subscribe_for_events/:logged_in_user_id",
+  async (request, response) => {
+    const { logged_in_user_id } = request.params;
 
-  response.writeHead(200, {
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Content-Encoding": "none",
-    "Cache-Control": "no-cache, no-transform",
-    "X-Accel-Buffering": "no",
-    "Access-Control-Allow-Origin": "*",
-    Connection: "keep-alive",
-  });
+    response.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Content-Encoding": "none",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+      "Access-Control-Allow-Origin": "*",
+      Connection: "keep-alive",
+    });
 
-  response.write(`data: ${JSON.stringify(null)}\n\n`);
+    response.write(`data: ${JSON.stringify(null)}\n\n`);
 
-  const notificationStream = notificationWatcher({
-    loggedInUserId: logged_in_user_id,
-    response,
-  });
+    const notificationStream = notificationWatcher({
+      loggedInUserId: logged_in_user_id,
+      response,
+    });
 
-  request.on("close", () => {
-    notificationStream.close();
-  });
-});
+    request.on("close", () => {
+      notificationStream.close();
+    });
+  }
+);
 
 app.post("/notfication_read/:user_id", async (request, response) => {
   for (const notify of request.body.unreadNotificationsIdArray) {
     await Notification.updateOne({ _id: notify._id }, { isRead: true });
   }
+  response.send({
+    isSuccess: true,
+    message: "proife save ho gaya hai",
+  });
+});
+
+app.post("/friend_request_accept/:user_id", async (request, response) => {
   response.send({
     isSuccess: true,
     message: "proife save ho gaya hai",
