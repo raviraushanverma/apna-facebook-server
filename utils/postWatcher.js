@@ -6,11 +6,7 @@ const getFilter = (loggedInUserId) => {
     {
       $match: {
         $and: [
-          //   {
-          //     $not: [
-          //       { "fullDocument.owner": new Types.ObjectId(loggedInUserId) },
-          //     ],
-          //   },
+          // { "fullDocument.owner": { $ne: new Types.ObjectId(loggedInUserId) } },
           { $or: [{ operationType: "insert" }] },
         ],
       },
