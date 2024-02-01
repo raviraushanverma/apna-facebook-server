@@ -1,27 +1,31 @@
-// import { Types } from "mongoose";
 import Post from "../models/post.js";
 
-const getFilter = (loggedInUserId) => {
-  return [
-    {
-      $match: {
-        $and: [
-          // { "fullDocument.owner": { $ne: new Types.ObjectId(loggedInUserId) } },
-          { $or: [{ operationType: "insert" }] },
-        ],
-      },
-    },
-  ];
-};
-
 export const postWatcher = ({ loggedInUserId, response }) => {
-  const postStream = Post.watch(getFilter(loggedInUserId));
+  const postStream = Post.watch([]);
   postStream.on("change", async (change) => {
-    if (change.fullDocument.owner != loggedInUserId) {
-      const newPost = await Post.findById(change.fullDocument._id)
-        .populate("owner")
-        .populate("comments.owner");
-      response.write(`data: ${JSON.stringify({ newPost })}\n\n`);
+    if (change.operationType === "insert") {
+      if (change.fullDocument.owner != loggedInUserId) {
+        const newPost = await Post.findById(change.fullDocument._id)
+          .populate("owner")
+          .populate("comments.owner");
+        response.write(
+          `data: ${JSON.stringify({
+            postStream: {
+              operationType: change.operationType,
+              newPost,
+            },
+          })}\n\n`
+        );
+      }
+    } else if (change.operationType === "delete") {
+      response.write(
+        `data: ${JSON.stringify({
+          postStream: {
+            operationType: change.operationType,
+            deletedPostId: change.documentKey._id,
+          },
+        })}\n\n`
+      );
     }
   });
 

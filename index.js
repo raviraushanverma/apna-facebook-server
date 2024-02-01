@@ -117,6 +117,14 @@ app.get("/posts", async (request, response) => {
 app.post("/comment", async (request, response) => {
   try {
     const post = await Post.findById(request.body.postId);
+    const commentOwner = await User.findById(request.body.comments.owner, {
+      email: 0,
+      password: 0,
+    });
+    if (!post || !commentOwner) {
+      throw new Error("Post or User not found!");
+    }
+
     const created = Date.now();
     const commentObj = {
       ...request.body.comments,
@@ -166,6 +174,9 @@ app.delete(
       const commentIndex = post.comments.findIndex((comment) => {
         return request.params.comment_id == comment._id;
       });
+      if (commentIndex === -1) {
+        throw new Error("Comment not found!");
+      }
 
       // Deleting Notification
       await Notification.deleteOne({
@@ -196,6 +207,14 @@ app.delete("/post_delete/:post_id/:user_id", async (request, response) => {
       owner: request.params.user_id,
     });
 
+    /*
+      we are not deleting all notifications here
+      because of time complexity
+      This can have many likes and comments,
+      we can not delete all the notification
+      which will cause higher time complexity
+    */
+
     response.send({
       isSuccess: true,
       message: "post delete ho gaya hai",
@@ -213,6 +232,14 @@ app.post(
   async (request, response) => {
     try {
       const post = await Post.findById(request.params.post_id);
+      const user = await User.findById(request.params.user_id, {
+        email: 0,
+        password: 0,
+      });
+      if (!post || !user) {
+        throw new Error("Post or User not found!");
+      }
+
       const created = Date.now();
       const isLiked = post.likes.has(request.params.user_id);
       if (isLiked === false) {
@@ -334,8 +361,15 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
       email: 0,
       password: 0,
     });
-    const created = Date.now();
+    const loggedInUser = await User.findById(request.body.loggedInUserId, {
+      email: 0,
+      password: 0,
+    });
+    if (!user || !loggedInUser) {
+      throw new Error("User not found!");
+    }
 
+    const created = Date.now();
     const newNotification = await Notification.create({
       owner: request.params.user_id,
       created,
@@ -482,9 +516,83 @@ app.post("/notfication_read/:user_id", async (request, response) => {
 
 app.post("/friend_request_accept/:user_id", async (request, response) => {
   try {
+    const loggedInUser = await User.findById(request.body.loggedInUserId, {
+      email: 0,
+      password: 0,
+    });
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
+    if (!user || !loggedInUser) {
+      throw new Error("User not found!");
+    }
+    const created = Date.now();
+    const newNotification = await Notification.create({
+      owner: request.params.user_id,
+      created,
+      action: "FRIEND_REQUEST_ACCEPTED",
+      user: request.body.loggedInUserId,
+    });
+
+    const fbRequestObj = loggedInUser.friendRequests.get(
+      request.params.user_id
+    );
+
+    // Deleting Notification
+    if (fbRequestObj) {
+      await Notification.deleteOne({
+        _id: fbRequestObj.notificationId,
+      });
+    }
+
+    user.friendRequests.delete(request.body.loggedInUserId);
+    user.friendLists.set(request.body.loggedInUserId, {
+      created,
+      friend: request.body.loggedInUserId,
+      notificationId: newNotification._id,
+    });
+    loggedInUser.friendLists.set(request.params.user_id, {
+      created,
+      friend: request.params.user_id,
+      notificationId: newNotification._id,
+    });
+    await loggedInUser.save();
+    await user.save();
+
     response.send({
       isSuccess: true,
-      message: "proife save ho gaya hai",
+      message: "friend request accepted",
+      user,
+      loggedInUser,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+app.delete("/unfriend/:user_id", async (request, response) => {
+  try {
+    const loggedInUser = await User.findById(request.body.loggedInUserId, {
+      email: 0,
+      password: 0,
+    });
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
+    user.friendLists.delete(request.body.loggedInUserId);
+    loggedInUser.friendLists.delete(request.params.user_id);
+    await loggedInUser.save();
+    await user.save();
+    response.send({
+      isSuccess: true,
+      message: "unfriend",
+      user,
+      loggedInUser,
     });
   } catch (error) {
     response.send({
