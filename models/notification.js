@@ -8,7 +8,7 @@ const NotificationSchema = new Schema({
     enum: [
       "POST_LIKED",
       "POST_COMMENTED",
-      "FRIEND_REQUEST_SENT",
+      "FRIEND_REQUEST_CAME",
       "FRIEND_REQUEST_ACCEPTED",
     ],
   },

@@ -8,6 +8,7 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
         const newNotification = await Notification.findById(
           change.fullDocument._id
         )
+          .populate("owner", "-email -password")
           .populate("user", "-email -password")
           .populate("post");
         response.write(

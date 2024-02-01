@@ -20,23 +20,21 @@ const UserSchema = new Schema({
   },
   profilePicURL: mediaType,
   banner: mediaType,
-  friendRequests: {
+  friends: {
     type: Map,
     default: {},
     required: true,
     of: {
       created: { type: Date },
-      friend: { type: Schema.ObjectId, ref: "User" },
-      notificationId: { type: Schema.ObjectId, ref: "Notification" },
-    },
-  },
-  friendLists: {
-    type: Map,
-    default: {},
-    required: true,
-    of: {
-      created: { type: Date },
-      friend: { type: Schema.ObjectId, ref: "User" },
+      state: {
+        type: String,
+        enum: [
+          "FRIEND_REQUEST_SENT",
+          "FRIEND_REQUEST_CAME",
+          "FRIEND_REQUEST_CONFIRM",
+        ],
+      },
+      user: { type: Schema.ObjectId, ref: "User" },
       notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
   },

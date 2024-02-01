@@ -27,6 +27,96 @@ app.get("/", async (request, response) => {
   response.send("Wow, Our API is working!!!!!");
 });
 
+// SERVER SENT EVENT (SSE)
+app.get(
+  "/subscribe_for_events/:logged_in_user_id",
+  async (request, response) => {
+    try {
+      const { logged_in_user_id } = request.params;
+
+      response.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Content-Encoding": "none",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        "Access-Control-Allow-Origin": "*",
+        Connection: "keep-alive",
+      });
+
+      response.write(`data: ${JSON.stringify(null)}\n\n`);
+
+      const notificationStream = notificationWatcher({
+        loggedInUserId: logged_in_user_id,
+        response,
+      });
+
+      const postStream = postWatcher({
+        loggedInUserId: logged_in_user_id,
+        response,
+      });
+
+      request.on("close", () => {
+        notificationStream.close();
+        postStream.close();
+      });
+    } catch (error) {
+      response.send({
+        isSuccess: false,
+        message: `Error: ${error}`,
+      });
+    }
+  }
+);
+
+app.post("/notfication_read/:user_id", async (request, response) => {
+  try {
+    for (const notify of request.body.unreadNotificationsIdArray) {
+      await Notification.updateOne({ _id: notify._id }, { isRead: true });
+    }
+    response.send({
+      isSuccess: true,
+      message: "proife save ho gaya hai",
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
+  try {
+    let notifications;
+    if (request.params.limit) {
+      notifications = await Notification.find({
+        owner: request.params.user_id,
+      })
+        .populate("user", "-email -password")
+        .populate("post")
+        .limit(request.params.limit)
+        .sort({ created: -1 });
+    } else {
+      notifications = await Notification.find({
+        owner: request.params.user_id,
+      })
+        .populate("user", "-email -password")
+        .populate("post")
+        .sort({ created: -1 });
+    }
+    response.send({
+      isSuccess: true,
+      message: "notifications aa gaya hai",
+      notifications,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
 app.post("/sign_up", async (request, response) => {
   try {
     const user = await User.findOne({ email: request.body.email });
@@ -357,6 +447,58 @@ app.post("/profile_update/:user_id", async (request, response) => {
 
 app.post("/friend_request_send/:user_id", async (request, response) => {
   try {
+    const loggedInUser = await User.findById(request.body.loggedInUserId, {
+      email: 0,
+      password: 0,
+    });
+    const user = await User.findById(request.params.user_id, {
+      email: 0,
+      password: 0,
+    });
+    if (!user || !loggedInUser) {
+      throw new Error("User not found!");
+    }
+
+    const created = Date.now();
+    const newNotification = await Notification.create({
+      owner: request.params.user_id,
+      created,
+      action: "FRIEND_REQUEST_CAME",
+      user: request.body.loggedInUserId,
+    });
+
+    user.friends.set(request.body.loggedInUserId, {
+      state: "FRIEND_REQUEST_CAME",
+      created,
+      user: request.body.loggedInUserId,
+      notificationId: newNotification._id,
+    });
+
+    loggedInUser.friends.set(request.params.user_id, {
+      state: "FRIEND_REQUEST_SENT",
+      created,
+      user: request.params.user_id,
+      notificationId: newNotification._id,
+    });
+
+    await user.save();
+    await loggedInUser.save();
+    response.send({
+      isSuccess: true,
+      message: "friendRequest save ho gaya hai",
+      loggedInUser,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+// this is for both cancel_request and reject_request
+app.post("/friend_request_cancel/:user_id", async (request, response) => {
+  try {
     const user = await User.findById(request.params.user_id, {
       email: 0,
       password: 0,
@@ -369,142 +511,26 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
       throw new Error("User not found!");
     }
 
-    const created = Date.now();
-    const newNotification = await Notification.create({
-      owner: request.params.user_id,
-      created,
-      action: "FRIEND_REQUEST_SENT",
-      user: request.body.loggedInUserId,
-    });
-
-    user.friendRequests.set(request.body.loggedInUserId, {
-      created,
-      friend: request.body.loggedInUserId,
-      notificationId: newNotification._id,
-    });
-
-    await user.save();
-    response.send({
-      isSuccess: true,
-      message: "friendRequest save ho gaya hai",
-      user: user,
-    });
-  } catch (error) {
-    response.send({
-      isSuccess: false,
-      message: `Error: ${error}`,
-    });
-  }
-});
-
-app.post("/friend_request_cancel/:user_id", async (request, response) => {
-  try {
-    const user = await User.findById(request.params.user_id, {
-      email: 0,
-      password: 0,
-    });
-
     // Deleting Notification
-    await Notification.deleteOne({
-      _id: user.friendRequests.get(request.body.loggedInUserId).notificationId,
-    });
+    const notificationId = user.friends.get(
+      request.body.loggedInUserId
+    ).notificationId;
+    if (notificationId) {
+      await Notification.deleteOne({
+        _id: notificationId,
+      });
+    }
 
-    user.friendRequests.delete(request.body.loggedInUserId);
+    user.friends.delete(request.body.loggedInUserId);
+    loggedInUser.friends.delete(request.params.user_id);
+
     await user.save();
+    await loggedInUser.save();
+
     response.send({
       isSuccess: true,
       message: "friendRequest delete ho gaya hai",
-      user,
-    });
-  } catch (error) {
-    response.send({
-      isSuccess: false,
-      message: `Error: ${error}`,
-    });
-  }
-});
-
-app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
-  try {
-    let notifications;
-    if (request.params.limit) {
-      notifications = await Notification.find({
-        owner: request.params.user_id,
-      })
-        .populate("user", "-email -password")
-        .populate("post")
-        .limit(request.params.limit)
-        .sort({ created: -1 });
-    } else {
-      notifications = await Notification.find({
-        owner: request.params.user_id,
-      })
-        .populate("user", "-email -password")
-        .populate("post")
-        .sort({ created: -1 });
-    }
-    response.send({
-      isSuccess: true,
-      message: "notifications aa gaya hai",
-      notifications,
-    });
-  } catch (error) {
-    response.send({
-      isSuccess: false,
-      message: `Error: ${error}`,
-    });
-  }
-});
-
-// SERVER SENT EVENT (SSE)
-app.get(
-  "/subscribe_for_events/:logged_in_user_id",
-  async (request, response) => {
-    try {
-      const { logged_in_user_id } = request.params;
-
-      response.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Content-Encoding": "none",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-        "Access-Control-Allow-Origin": "*",
-        Connection: "keep-alive",
-      });
-
-      response.write(`data: ${JSON.stringify(null)}\n\n`);
-
-      const notificationStream = notificationWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
-
-      const postStream = postWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
-
-      request.on("close", () => {
-        notificationStream.close();
-        postStream.close();
-      });
-    } catch (error) {
-      response.send({
-        isSuccess: false,
-        message: `Error: ${error}`,
-      });
-    }
-  }
-);
-
-app.post("/notfication_read/:user_id", async (request, response) => {
-  try {
-    for (const notify of request.body.unreadNotificationsIdArray) {
-      await Notification.updateOne({ _id: notify._id }, { isRead: true });
-    }
-    response.send({
-      isSuccess: true,
-      message: "proife save ho gaya hai",
+      loggedInUser,
     });
   } catch (error) {
     response.send({
@@ -535,35 +561,33 @@ app.post("/friend_request_accept/:user_id", async (request, response) => {
       user: request.body.loggedInUserId,
     });
 
-    const fbRequestObj = loggedInUser.friendRequests.get(
-      request.params.user_id
-    );
-
     // Deleting Notification
+    const fbRequestObj = loggedInUser.friends.get(request.params.user_id);
     if (fbRequestObj) {
       await Notification.deleteOne({
         _id: fbRequestObj.notificationId,
       });
     }
 
-    user.friendRequests.delete(request.body.loggedInUserId);
-    user.friendLists.set(request.body.loggedInUserId, {
-      created,
-      friend: request.body.loggedInUserId,
-      notificationId: newNotification._id,
+    user.friends.set(request.body.loggedInUserId, {
+      ...JSON.parse(
+        JSON.stringify(user.friends.get(request.body.loggedInUserId))
+      ),
+      state: "FRIEND_REQUEST_CONFIRM",
     });
-    loggedInUser.friendLists.set(request.params.user_id, {
-      created,
-      friend: request.params.user_id,
-      notificationId: newNotification._id,
+    loggedInUser.friends.set(request.params.user_id, {
+      ...JSON.parse(
+        JSON.stringify(loggedInUser.friends.get(request.params.user_id))
+      ),
+      state: "FRIEND_REQUEST_CONFIRM",
     });
+
     await loggedInUser.save();
     await user.save();
 
     response.send({
       isSuccess: true,
       message: "friend request accepted",
-      user,
       loggedInUser,
     });
   } catch (error) {
@@ -584,14 +608,19 @@ app.delete("/unfriend/:user_id", async (request, response) => {
       email: 0,
       password: 0,
     });
-    user.friendLists.delete(request.body.loggedInUserId);
-    loggedInUser.friendLists.delete(request.params.user_id);
+    if (!user || !loggedInUser) {
+      throw new Error("User not found!");
+    }
+
+    user.friends.delete(request.body.loggedInUserId);
+    loggedInUser.friends.delete(request.params.user_id);
+
     await loggedInUser.save();
     await user.save();
+
     response.send({
       isSuccess: true,
       message: "unfriend",
-      user,
       loggedInUser,
     });
   } catch (error) {
