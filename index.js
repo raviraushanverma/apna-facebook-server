@@ -7,15 +7,49 @@ import Post from "./models/post.js";
 import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
 import { postWatcher } from "./utils/postWatcher.js";
+import cookieParser from "cookie-parser";
 
 connectDataBase();
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://apna-facebook.vercel.app",
+];
 
 const app = express();
 
 const port = 5000;
 
-app.use(cors());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+
 app.use(bodyParser.json());
+
+const setCookie = ({ response, user }) => {
+  let minute = 60 * 1000;
+  response.cookie("sessionToken", user._id, {
+    maxAge: minute,
+    HttpOnly: true,
+  });
+};
+
+const getLoggedInUserId = (request, response) => {
+  const { sessionToken } = request.cookies;
+  console.log("LoggedInUser sessionToken ====> ", sessionToken);
+  if (!sessionToken) {
+    response.send({
+      isSuccess: false,
+      message: "You are not authorized",
+    });
+  }
+  return sessionToken;
+};
 
 app.listen(port, () => {
   console.log(`===========================================`);
@@ -28,45 +62,49 @@ app.get("/", async (request, response) => {
 });
 
 // SERVER SENT EVENT (SSE)
-app.get(
-  "/subscribe_for_events/:logged_in_user_id",
-  async (request, response) => {
-    try {
-      const { logged_in_user_id } = request.params;
-
-      response.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Content-Encoding": "none",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-        "Access-Control-Allow-Origin": "*",
-        Connection: "keep-alive",
-      });
-
-      response.write(`data: ${JSON.stringify(null)}\n\n`);
-
-      const notificationStream = notificationWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
-
-      const postStream = postWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
-
-      request.on("close", () => {
-        notificationStream.close();
-        postStream.close();
-      });
-    } catch (error) {
-      response.send({
-        isSuccess: false,
-        message: `Error: ${error}`,
-      });
+app.get("/subscribe_for_live_updates/", async (request, response) => {
+  try {
+    const loggedInUserId = getLoggedInUserId(request, response);
+    if (!loggedInUserId) {
+      return null;
     }
+
+    const origin = request.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+      response.setHeader("Access-Control-Allow-Origin", origin);
+    }
+
+    response.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Content-Encoding": "none",
+      "Cache-Control": "no-cache, no-transform",
+      "Access-Control-Allow-Credentials": true,
+      Connection: "keep-alive",
+    });
+
+    response.write(`data: ${JSON.stringify(null)}\n\n`);
+
+    const notificationStream = notificationWatcher({
+      loggedInUserId,
+      response,
+    });
+
+    const postStream = postWatcher({
+      loggedInUserId,
+      response,
+    });
+
+    request.on("close", () => {
+      notificationStream.close();
+      postStream.close();
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
   }
-);
+});
 
 app.post("/notfication_read/:user_id", async (request, response) => {
   try {
@@ -121,11 +159,12 @@ app.post("/sign_up", async (request, response) => {
   try {
     const user = await User.findOne({ email: request.body.email });
     if (user === null) {
-      const userObj = await User.create(request.body);
+      const user = await User.create(request.body);
+      setCookie({ response, user });
       response.send({
         isSuccess: true,
         message: "apka account create ho gaya hai",
-        user: userObj,
+        user,
       });
     } else {
       response.send({
@@ -149,6 +188,7 @@ app.post("/login", async (request, response) => {
     });
 
     if (user !== null) {
+      setCookie({ response, user });
       response.send({
         isSuccess: true,
         messsage: "app login ho chuke hai",
@@ -160,6 +200,21 @@ app.post("/login", async (request, response) => {
         message: "incorrect email or password",
       });
     }
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+app.get("/logout", async (request, response) => {
+  try {
+    response.clearCookie("sessionToken");
+    response.send({
+      isSuccess: true,
+      message: "logged out",
+    });
   } catch (error) {
     response.send({
       isSuccess: false,
