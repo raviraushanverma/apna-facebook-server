@@ -28,45 +28,61 @@ app.get("/", async (request, response) => {
 });
 
 // SERVER SENT EVENT (SSE)
-app.get(
-  "/subscribe_for_events/:logged_in_user_id",
-  async (request, response) => {
-    try {
-      const { logged_in_user_id } = request.params;
+app.get("/subscribe_for_events/:logged_in_user_id", async (req, res) => {
+  res.writeHead(200, {
+    "Cache-Control": "no-cache",
+    "Content-Type": "text/event-stream",
+  });
+  res.write("data: Processing...");
+  /* https://github.com/expressjs/compression#server-sent-events
+      Because of the nature of compression this module does not work out of the box with
+      server-sent events. To compress content, a window of the output needs to be
+      buffered up in order to get good compression. Typically when using server-sent
+      events, there are certain block of data that need to reach the client.
+  
+      You can achieve this by calling res.flush() when you need the data written to
+      actually make it to the client.
+  */
+  res.flush();
+  setTimeout(() => {
+    res.write("data: Processing2...");
+    res.flush();
+  }, 1000);
+  // try {
+  //   const { logged_in_user_id } = request.params;
 
-      response.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Content-Encoding": "none",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-        "Access-Control-Allow-Origin": "*",
-        Connection: "keep-alive",
-      });
+  //   response.writeHead(200, {
+  //     "Content-Type": "text/event-stream; charset=utf-8",
+  //     "Content-Encoding": "none",
+  //     "Cache-Control": "no-cache, no-transform",
+  //     "X-Accel-Buffering": "no",
+  //     "Access-Control-Allow-Origin": "*",
+  //     Connection: "keep-alive",
+  //   });
 
-      response.write(`data: ${JSON.stringify(null)}\n\n`);
+  //   response.write(`data: ${JSON.stringify(null)}\n\n`);
 
-      const notificationStream = notificationWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
+  //   const notificationStream = notificationWatcher({
+  //     loggedInUserId: logged_in_user_id,
+  //     response,
+  //   });
 
-      const postStream = postWatcher({
-        loggedInUserId: logged_in_user_id,
-        response,
-      });
+  //   const postStream = postWatcher({
+  //     loggedInUserId: logged_in_user_id,
+  //     response,
+  //   });
 
-      request.on("close", () => {
-        notificationStream.close();
-        postStream.close();
-      });
-    } catch (error) {
-      response.send({
-        isSuccess: false,
-        message: `Error: ${error}`,
-      });
-    }
-  }
-);
+  //   request.on("close", () => {
+  //     notificationStream.close();
+  //     postStream.close();
+  //   });
+  // } catch (error) {
+  //   response.send({
+  //     isSuccess: false,
+  //     message: `Error: ${error}`,
+  //   });
+  // }
+});
 
 app.post("/notfication_read/:user_id", async (request, response) => {
   try {
@@ -622,6 +638,25 @@ app.delete("/unfriend/:user_id", async (request, response) => {
       isSuccess: true,
       message: "unfriend",
       loggedInUser,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+app.get("/friends", async (request, response) => {
+  try {
+    // galat banaya hain ye wala ... sahi karna isko
+    const users = await User.find();
+
+    console.log(users);
+    response.send({
+      isSuccess: true,
+      message: "user find ho gaya hai",
+      users,
     });
   } catch (error) {
     response.send({
