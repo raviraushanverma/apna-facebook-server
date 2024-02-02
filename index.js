@@ -34,8 +34,10 @@ app.use(bodyParser.json());
 const setCookie = ({ response, user }) => {
   let minute = 60 * 1000;
   response.cookie("sessionToken", user._id, {
-    maxAge: minute,
-    HttpOnly: true,
+    expires: new Date(Date.now() + 3600 * 1000 * 24 * 180 * 1),
+    httpOnly: true,
+    sameSite: "none",
+    secure: "false",
   });
 };
 
