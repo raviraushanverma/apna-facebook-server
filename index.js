@@ -36,8 +36,6 @@ const setCookie = ({ response, user }) => {
   response.cookie("sessionToken", user._id, {
     expires: new Date(Date.now() + 3600 * 1000 * 24 * 180 * 1),
     httpOnly: true,
-    sameSite: "none",
-    secure: "false",
   });
 };
 
@@ -182,11 +180,11 @@ app.post("/sign_up", async (request, response) => {
   }
 });
 
-app.post("/login", async (request, response) => {
+app.get("/login", async (request, response) => {
   try {
     const user = await User.findOne({
-      email: request.body.email,
-      password: request.body.password,
+      email: "ravi@gmail.com",
+      password: "123",
     });
 
     if (user !== null) {
