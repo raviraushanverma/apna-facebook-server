@@ -13,7 +13,10 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
           .populate("user", "-email -password")
           .populate({
             path: "post",
-            populate: { path: "comments.owner", select: "-email -password" },
+            populate: [
+              { path: "owner", select: "-email -password" },
+              { path: "comments.owner", select: "-email -password" },
+            ],
           });
         response.write(
           `data: ${JSON.stringify({
