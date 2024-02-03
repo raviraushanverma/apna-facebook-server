@@ -1,4 +1,5 @@
 import Notification from "../models/notification.js";
+import User from "../models/user.js";
 
 export const notificationWatcher = ({ loggedInUserId, response }) => {
   const notificationStream = Notification.watch([]);
@@ -10,7 +11,10 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
         )
           .populate("owner", "-email -password")
           .populate("user", "-email -password")
-          .populate("post");
+          .populate({
+            path: "post",
+            populate: { path: "comments.owner", select: "-email -password" },
+          });
         response.write(
           `data: ${JSON.stringify({
             notificationStream: {
@@ -26,6 +30,10 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
           notificationStream: {
             operationType: change.operationType,
             deletedNotificationId: change.documentKey._id,
+            owner: await User.findById(loggedInUserId, {
+              email: 0,
+              password: 0,
+            }),
           },
         })}\n\n`
       );

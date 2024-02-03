@@ -10,6 +10,7 @@ const NotificationSchema = new Schema({
       "POST_COMMENTED",
       "FRIEND_REQUEST_CAME",
       "FRIEND_REQUEST_ACCEPTED",
+      "UNFRIEND",
     ],
   },
   isRead: { type: Boolean, default: false },

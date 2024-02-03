@@ -467,6 +467,21 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
     }
 
     const created = Date.now();
+    user.friends.set(request.body.loggedInUserId, {
+      state: "FRIEND_REQUEST_CAME",
+      created,
+      user: request.body.loggedInUserId,
+    });
+
+    loggedInUser.friends.set(request.params.user_id, {
+      state: "FRIEND_REQUEST_SENT",
+      created,
+      user: request.params.user_id,
+    });
+
+    await user.save();
+    await loggedInUser.save();
+
     const newNotification = await Notification.create({
       owner: request.params.user_id,
       created,
@@ -475,21 +490,22 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
     });
 
     user.friends.set(request.body.loggedInUserId, {
-      state: "FRIEND_REQUEST_CAME",
-      created,
-      user: request.body.loggedInUserId,
+      ...JSON.parse(
+        JSON.stringify(user.friends.get(request.body.loggedInUserId))
+      ),
       notificationId: newNotification._id,
     });
 
     loggedInUser.friends.set(request.params.user_id, {
-      state: "FRIEND_REQUEST_SENT",
-      created,
-      user: request.params.user_id,
+      ...JSON.parse(
+        JSON.stringify(loggedInUser.friends.get(request.params.user_id))
+      ),
       notificationId: newNotification._id,
     });
 
     await user.save();
     await loggedInUser.save();
+
     response.send({
       isSuccess: true,
       message: "friendRequest save ho gaya hai",
@@ -518,21 +534,22 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
       throw new Error("User not found!");
     }
 
-    // Deleting Notification
     const notificationId = user.friends.get(
       request.body.loggedInUserId
     ).notificationId;
-    if (notificationId) {
-      await Notification.deleteOne({
-        _id: notificationId,
-      });
-    }
 
     user.friends.delete(request.body.loggedInUserId);
     loggedInUser.friends.delete(request.params.user_id);
 
     await user.save();
     await loggedInUser.save();
+
+    // Deleting Notification
+    if (notificationId) {
+      await Notification.deleteOne({
+        _id: notificationId,
+      });
+    }
 
     response.send({
       isSuccess: true,
@@ -561,12 +578,6 @@ app.post("/friend_request_accept/:user_id", async (request, response) => {
       throw new Error("User not found!");
     }
     const created = Date.now();
-    const newNotification = await Notification.create({
-      owner: request.params.user_id,
-      created,
-      action: "FRIEND_REQUEST_ACCEPTED",
-      user: request.body.loggedInUserId,
-    });
 
     // Deleting Notification
     const fbRequestObj = loggedInUser.friends.get(request.params.user_id);
@@ -591,6 +602,13 @@ app.post("/friend_request_accept/:user_id", async (request, response) => {
 
     await loggedInUser.save();
     await user.save();
+
+    await Notification.create({
+      owner: request.params.user_id,
+      created,
+      action: "FRIEND_REQUEST_ACCEPTED",
+      user: request.body.loggedInUserId,
+    });
 
     response.send({
       isSuccess: true,
@@ -625,29 +643,17 @@ app.delete("/unfriend/:user_id", async (request, response) => {
     await loggedInUser.save();
     await user.save();
 
+    await Notification.create({
+      owner: request.params.user_id,
+      created: Date.now(),
+      action: "UNFRIEND",
+      user: request.body.loggedInUserId,
+    });
+
     response.send({
       isSuccess: true,
       message: "unfriend",
       loggedInUser,
-    });
-  } catch (error) {
-    response.send({
-      isSuccess: false,
-      message: `Error: ${error}`,
-    });
-  }
-});
-
-app.get("/friends", async (request, response) => {
-  try {
-    // galat banaya hain ye wala ... sahi karna isko
-    const users = await User.find();
-
-    console.log(users);
-    response.send({
-      isSuccess: true,
-      message: "user find ho gaya hai",
-      users,
     });
   } catch (error) {
     response.send({
