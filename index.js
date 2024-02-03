@@ -685,10 +685,11 @@ app.get(
       );
       const newFriendSuggetion = users.filter((user) => {
         return (
-          user.friends.has(request.params.loggedInUserId) === false ||
-          (user.friends.has(request.params.loggedInUserId) === true &&
-            user.friends.get(request.params.loggedInUserId).state ===
-              "FRIEND_REQUEST_CAME")
+          user._id != request.params.loggedInUserId &&
+          (user.friends.has(request.params.loggedInUserId) === false ||
+            (user.friends.has(request.params.loggedInUserId) === true &&
+              user.friends.get(request.params.loggedInUserId).state ===
+                "FRIEND_REQUEST_CAME"))
         );
       });
 
