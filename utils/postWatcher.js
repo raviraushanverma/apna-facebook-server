@@ -8,14 +8,16 @@ export const postWatcher = ({ loggedInUserId, response }) => {
         const newPost = await Post.findById(change.fullDocument._id)
           .populate("owner")
           .populate("comments.owner");
-        response.write(
-          `data: ${JSON.stringify({
-            postStream: {
-              operationType: change.operationType,
-              newPost,
-            },
-          })}\n\n`
-        );
+        if (newPost.owner.friends.has(loggedInUserId)) {
+          response.write(
+            `data: ${JSON.stringify({
+              postStream: {
+                operationType: change.operationType,
+                newPost,
+              },
+            })}\n\n`
+          );
+        }
       }
     } else if (change.operationType === "delete") {
       response.write(

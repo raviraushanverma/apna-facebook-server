@@ -7,6 +7,7 @@ import Post from "./models/post.js";
 import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
 import { postWatcher } from "./utils/postWatcher.js";
+import { Types } from "mongoose";
 
 connectDataBase();
 
@@ -192,16 +193,24 @@ app.post("/post", async (request, response) => {
   }
 });
 
-app.get("/posts", async (request, response) => {
+app.get("/posts/:loggedInUserId", async (request, response) => {
   try {
     const posts = await Post.find()
       .populate("owner")
       .populate("comments.owner")
       .sort({ created: -1 });
+    const filteredPosts = posts.filter((post) => {
+      if (
+        post.owner.friends.has(request.params.loggedInUserId) ||
+        post.owner._id == request.params.loggedInUserId
+      ) {
+        return post;
+      }
+    });
     response.send({
       isSuccess: true,
       message: "data aa gaya",
-      posts: posts,
+      posts: filteredPosts,
     });
   } catch (error) {
     response.send({
@@ -654,6 +663,64 @@ app.delete("/unfriend/:user_id", async (request, response) => {
       isSuccess: true,
       message: "unfriend",
       loggedInUser,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
+app.get(
+  "/new_friend_suggestion_list/:loggedInUserId",
+  async (request, response) => {
+    try {
+      const users = await User.find(
+        {},
+        {
+          email: 0,
+          password: 0,
+        }
+      );
+      const newFriendSuggetion = users.filter((user) => {
+        return (
+          user.friends.has(request.params.loggedInUserId) === false ||
+          (user.friends.has(request.params.loggedInUserId) === true &&
+            user.friends.get(request.params.loggedInUserId).state ===
+              "FRIEND_REQUEST_CAME")
+        );
+      });
+
+      response.send({
+        isSuccess: true,
+        message: "data aa gaya",
+        users: newFriendSuggetion,
+      });
+    } catch (error) {
+      response.send({
+        isSuccess: false,
+        message: `Error: ${error}`,
+      });
+    }
+  }
+);
+
+app.get("/get_friend_list/:loggedInUserId", async (request, response) => {
+  try {
+    const loggedInUser = await User.findOne({
+      _id: new Types.ObjectId(request.params.loggedInUserId),
+    }).populate("friends.$*.user", "name profilePicURL");
+
+    const friends = [...loggedInUser.friends.values()]
+      .filter((obj) => {
+        return obj.state === "FRIEND_REQUEST_CONFIRM";
+      })
+      .map((obj) => obj.user);
+    response.send({
+      isSuccess: true,
+      message: "data aa gaya",
+      users: friends,
     });
   } catch (error) {
     response.send({
