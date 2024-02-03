@@ -730,3 +730,21 @@ app.get("/get_friend_list/:loggedInUserId", async (request, response) => {
     });
   }
 });
+
+app.get("/get_post_detail/:postId", async (request, response) => {
+  try {
+    const post = await Post.findById(request.params.postId)
+      .populate("owner", "-email -password")
+      .populate("comments.owner", "-email -password");
+    response.send({
+      isSuccess: true,
+      message: "post aa gaya",
+      post,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
