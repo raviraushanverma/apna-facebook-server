@@ -201,7 +201,9 @@ app.get("/posts/:loggedInUserId", async (request, response) => {
       .sort({ created: -1 });
     const filteredPosts = posts.filter((post) => {
       if (
-        post.owner.friends.has(request.params.loggedInUserId) ||
+        (post.owner.friends.has(request.params.loggedInUserId) &&
+          post.owner.friends.get(request.params.loggedInUserId).state ===
+            "FRIEND_REQUEST_CONFIRM") ||
         post.owner._id == request.params.loggedInUserId
       ) {
         return post;
