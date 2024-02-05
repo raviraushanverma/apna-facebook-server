@@ -9,7 +9,11 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
         const newNotification = await Notification.findById(
           change.fullDocument._id
         )
-          .populate("owner", "-email -password")
+          .populate({
+            path: "owner",
+            select: "-email -password",
+            populate: [{ path: "friends.$*.user", select: "-email -password" }],
+          })
           .populate("user", "-email -password")
           .populate({
             path: "post",
@@ -36,7 +40,7 @@ export const notificationWatcher = ({ loggedInUserId, response }) => {
             owner: await User.findById(loggedInUserId, {
               email: 0,
               password: 0,
-            }),
+            }).populate("friends.$*.user", "-email -password"),
           },
         })}\n\n`
       );

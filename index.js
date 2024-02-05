@@ -109,6 +109,7 @@ app.get("/get_notifications/:user_id/:limit?", async (request, response) => {
         owner: request.params.user_id,
       })
         .populate("user", "-email -password")
+        .populate("friends.$*.user", "-email -password")
         .populate("post")
         .sort({ created: -1 });
     }
@@ -468,7 +469,7 @@ app.post("/friend_request_send/:user_id", async (request, response) => {
     const loggedInUser = await User.findById(request.body.loggedInUserId, {
       email: 0,
       password: 0,
-    });
+    }).populate("friends.$*.user", "-email -password");
     const user = await User.findById(request.params.user_id, {
       email: 0,
       password: 0,
@@ -540,7 +541,7 @@ app.post("/friend_request_cancel/:user_id", async (request, response) => {
     const loggedInUser = await User.findById(request.body.loggedInUserId, {
       email: 0,
       password: 0,
-    });
+    }).populate("friends.$*.user", "-email -password");
     if (!user || !loggedInUser) {
       throw new Error("User not found!");
     }
@@ -580,7 +581,7 @@ app.post("/friend_request_accept/:user_id", async (request, response) => {
     const loggedInUser = await User.findById(request.body.loggedInUserId, {
       email: 0,
       password: 0,
-    });
+    }).populate("friends.$*.user", "-email -password");
     const user = await User.findById(request.params.user_id, {
       email: 0,
       password: 0,
@@ -639,7 +640,7 @@ app.delete("/unfriend/:user_id", async (request, response) => {
     const loggedInUser = await User.findById(request.body.loggedInUserId, {
       email: 0,
       password: 0,
-    });
+    }).populate("friends.$*.user", "-email -password");
     const user = await User.findById(request.params.user_id, {
       email: 0,
       password: 0,
