@@ -154,7 +154,7 @@ app.post("/login", async (request, response) => {
     const user = await User.findOne({
       email: request.body.email,
       password: request.body.password,
-    });
+    }).populate("friends.$*.user", "name profilePicURL");
 
     if (user !== null) {
       response.send({
