@@ -750,3 +750,27 @@ app.get("/get_post_detail/:postId", async (request, response) => {
     });
   }
 });
+
+app.get("/autocomplete/:searchUserName?", async (request, response) => {
+  try {
+    let users = [];
+    if (request.params.searchUserName) {
+      users = await User.find(
+        { name: { $regex: request.params.searchUserName, $options: "i" } },
+        { name: 1, profilePicURL: 1 }
+      ).sort({
+        updated_at: -1,
+      });
+    }
+    response.send({
+      isSuccess: true,
+      message: "typeahead data aa gaya hain",
+      users,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
