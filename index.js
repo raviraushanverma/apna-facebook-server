@@ -612,7 +612,9 @@ app.post("/friend_request_accept/:user_id", async (request, response) => {
       state: "FRIEND_REQUEST_CONFIRM",
     });
 
-    await loggedInUser.save();
+    await (
+      await loggedInUser.save()
+    ).populate("friends.$*.user", "-email -password");
     await user.save();
 
     await Notification.create({
