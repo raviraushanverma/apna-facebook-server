@@ -701,7 +701,7 @@ app.get(
       response.send({
         isSuccess: true,
         message: "data aa gaya",
-        users: newFriendSuggetion,
+        users: newFriendSuggetion.reverse(),
       });
     } catch (error) {
       response.send({
