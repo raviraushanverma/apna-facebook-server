@@ -15,7 +15,10 @@ import { webSocketCallBack } from "./websocket.js";
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
+  cors: {
+    origin: ["http://localhost:3000", "https://apna-facebook.vercel.app"],
+    methods: ["GET", "POST"],
+  },
 });
 
 connectDataBase();
