@@ -1,4 +1,6 @@
-import express, { request, response } from "express";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
 import cors from "cors";
 import bodyParser from "body-parser";
 import connectDataBase from "./database.js";
@@ -8,10 +10,15 @@ import Notification from "./models/notification.js";
 import { notificationWatcher } from "./utils/notificationWatcher.js";
 import { postWatcher } from "./utils/postWatcher.js";
 import { Types } from "mongoose";
-
-connectDataBase();
+import { webSocketCallBack } from "./websocket.js";
 
 const app = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
+});
+
+connectDataBase();
 
 const port = 5000;
 
@@ -19,11 +26,13 @@ app.use(cors());
 
 app.use(bodyParser.json());
 
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`===========================================`);
   console.log(`Apna Facebook app listening on port ${port}`);
   console.log(`===========================================`);
 });
+
+io.on("connection", webSocketCallBack);
 
 app.get("/", async (request, response) => {
   response.send("Wow, Our API is working!!!!!");
