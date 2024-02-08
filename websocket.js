@@ -10,14 +10,11 @@ export const webSocketCallBack = (socket) => {
   });
 
   socket.on("disconnect", function () {
-    console.log(
-      "user disconnected with ID ==> ",
-      socketToUserIdMapping.get(`${socket.id}`)
-    );
-    socket.broadcast.emit(
-      "other-user-disconnected",
-      socketToUserIdMapping.get(`${socket.id}`)
-    );
-    socketToUserIdMapping.delete(`${socket.id}`);
+    const userId = socketToUserIdMapping.get(`${socket.id}`);
+    if (userId) {
+      console.log("user disconnected with ID ==> ", userId);
+      socket.broadcast.emit("other-user-disconnected", userId);
+      socketToUserIdMapping.delete(`${socket.id}`);
+    }
   });
 };
