@@ -189,6 +189,24 @@ app.post("/login", async (request, response) => {
   }
 });
 
+app.post("/get-me", async (request, response) => {
+  try {
+    const me = await User.findOne({
+      _id: request.body.loggedInUserId,
+    }).populate("friends.$*.user", "name profilePicURL");
+    response.send({
+      isSuccess: true,
+      messsage: "its you",
+      me: me,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});
+
 app.post("/post", async (request, response) => {
   try {
     const post = await Post.create(request.body);
