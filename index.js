@@ -807,3 +807,27 @@ app.get("/autocomplete/:searchUserName?", async (request, response) => {
     });
   }
 });
+
+app.get("/get-chat/:loggedInUserId/:friendId", async (request, response) => {
+  try {
+    const loggedInUser = await User.findById(request.params.loggedInUserId);
+    if (!loggedInUser) {
+      response.send({
+        isSuccess: false,
+        message: "you are not authorised",
+      });
+      return null;
+    }
+    const chats = loggedInUser.chats.get(`${request.params.friendId}`);
+    response.send({
+      isSuccess: true,
+      message: "typeahead data aa gaya hain",
+      chats,
+    });
+  } catch (error) {
+    response.send({
+      isSuccess: false,
+      message: `Error: ${error}`,
+    });
+  }
+});

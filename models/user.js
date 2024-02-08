@@ -38,6 +38,19 @@ const UserSchema = new Schema({
       notificationId: { type: Schema.ObjectId, ref: "Notification" },
     },
   },
+  chats: {
+    type: Map,
+    default: [],
+    required: true,
+    of: [
+      {
+        to: { type: Schema.ObjectId, ref: "User" },
+        from: { type: Schema.ObjectId, ref: "User" },
+        message: { type: String },
+        time: { type: Date },
+      },
+    ],
+  },
 });
 
 const User = model("User", UserSchema);
