@@ -26,9 +26,6 @@ export const webSocketCallBack = (socket) => {
 
   socket.on("send-message", async (data) => {
     const to = userToSocketMapping.get(data.to);
-    if (to) {
-      to.emit("receive-message", data);
-    }
     // saving chat in data-base
     const toUser = await User.findById(data.to);
     const fromUser = await User.findById(data.from);
@@ -42,6 +39,19 @@ export const webSocketCallBack = (socket) => {
       tempArray2.push(data);
       fromUser.chats.set(`${data.to}`, JSON.parse(JSON.stringify(tempArray2)));
       await fromUser.save();
+    }
+
+    setTimeout(() => {
+      if (to) {
+        to.emit("receive-message", data);
+      }
+    });
+  });
+
+  socket.on("send-gun-shoot", (data) => {
+    const to = userToSocketMapping.get(data.to);
+    if (to) {
+      to.emit("receive-gun-shoot", data);
     }
   });
 };
