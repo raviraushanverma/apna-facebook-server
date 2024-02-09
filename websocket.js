@@ -8,6 +8,7 @@ export const webSocketCallBack = (socket) => {
 
   socket.on("user-connected", (userId) => {
     console.log("user connected with ID ==> ", userId);
+    socket.emit("all-connected-users", [...socketToUserIdMapping.values()]);
     socketToUserIdMapping.set(`${socket.id}`, userId);
     userToSocketMapping.set(`${userId}`, socket);
     socket.broadcast.emit("other-user-connected", userId);
