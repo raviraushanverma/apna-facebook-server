@@ -167,7 +167,7 @@ app.post("/login", async (request, response) => {
     const user = await User.findOne({
       email: request.body.email,
       password: request.body.password,
-    }).populate("friends.$*.user", "name profilePicURL");
+    }).populate("friends.$*.user", "name profilePicURL lastLoggedInTime");
 
     if (user !== null) {
       response.send({
@@ -193,7 +193,7 @@ app.post("/get-me", async (request, response) => {
   try {
     const me = await User.findOne({
       _id: request.body.loggedInUserId,
-    }).populate("friends.$*.user", "name profilePicURL");
+    }).populate("friends.$*.user", "name profilePicURL lastLoggedInTime");
     response.send({
       isSuccess: true,
       messsage: "its you",
@@ -746,7 +746,7 @@ app.get("/get_friend_list/:loggedInUserId", async (request, response) => {
   try {
     const loggedInUser = await User.findOne({
       _id: new Types.ObjectId(request.params.loggedInUserId),
-    }).populate("friends.$*.user", "name profilePicURL");
+    }).populate("friends.$*.user", "name profilePicURL lastLoggedInTime");
 
     const friends = [...loggedInUser.friends.values()]
       .filter((obj) => {

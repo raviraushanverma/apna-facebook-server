@@ -11,6 +11,7 @@ const NotificationSchema = new Schema({
       "FRIEND_REQUEST_CAME",
       "FRIEND_REQUEST_ACCEPTED",
       "UNFRIEND",
+      "CHAT_MESSAGE",
     ],
   },
   isRead: { type: Boolean, default: false },

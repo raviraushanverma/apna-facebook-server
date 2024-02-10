@@ -51,6 +51,7 @@ const UserSchema = new Schema({
       },
     ],
   },
+  lastLoggedInTime: { type: Date },
 });
 
 const User = model("User", UserSchema);

@@ -1,4 +1,5 @@
 import User from "./models/user.js";
+import Notification from "./models/notification.js";
 
 const socketToUserIdMapping = new Map();
 const userToSocketMapping = new Map();
@@ -14,13 +15,27 @@ export const webSocketCallBack = (socket) => {
     socket.broadcast.emit("other-user-connected", userId);
   });
 
-  socket.on("disconnect", function () {
+  socket.on("disconnect", async () => {
     const userId = socketToUserIdMapping.get(`${socket.id}`);
-    if (userId) {
+    const user = await User.findById(userId);
+    if (userId && user) {
       console.log("user disconnected with ID ==> ", userId);
-      socket.broadcast.emit("other-user-disconnected", userId);
+      const lastLoggedInTime = Date.now();
+      socket.broadcast.emit("other-user-disconnected", {
+        userId,
+        lastLoggedInTime,
+      });
       socketToUserIdMapping.delete(`${socket.id}`);
       userToSocketMapping.delete(`${userId}`);
+      user.lastLoggedInTime = lastLoggedInTime;
+      await user.save();
+    }
+  });
+
+  socket.on("send-typing", (data) => {
+    const to = userToSocketMapping.get(data.to);
+    if (to) {
+      to.emit("receive-typing", data);
     }
   });
 
@@ -41,17 +56,18 @@ export const webSocketCallBack = (socket) => {
       await fromUser.save();
     }
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (to) {
         to.emit("receive-message", data);
+      } else {
+        await Notification.create({
+          owner: data.to,
+          created: data.time,
+          action: "CHAT_MESSAGE",
+          user: data.from,
+          message: data.message,
+        });
       }
     });
-  });
-
-  socket.on("send-gun-shoot", (data) => {
-    const to = userToSocketMapping.get(data.to);
-    if (to) {
-      to.emit("receive-gun-shoot", data);
-    }
   });
 };
