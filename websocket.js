@@ -4,7 +4,7 @@ import Notification from "./models/notification.js";
 const socketToUserIdMapping = new Map();
 const userToSocketMapping = new Map();
 
-export const webSocketCallBack = (socket) => {
+export const webSocketCallBack = ({ socket, io }) => {
   socket.emit("all-connected-users", [...socketToUserIdMapping.values()]);
 
   socket.on("user-connected", (userId) => {
@@ -69,5 +69,27 @@ export const webSocketCallBack = (socket) => {
         });
       }
     });
+  });
+
+  // Web RTC
+  socket.on("user:call", ({ to, offer }) => {
+    const toSocket = userToSocketMapping.get(to);
+    if (toSocket) {
+      toSocket.emit("incomming:call", { from: socket.id, offer });
+    }
+  });
+
+  socket.on("call:accepted", ({ to, ans }) => {
+    io.to(to).emit("call:accepted", { from: socket.id, ans });
+  });
+
+  socket.on("peer:nego:needed", ({ to, offer }) => {
+    console.log("peer:nego:needed", offer);
+    io.to(to).emit("peer:nego:needed", { from: socket.id, offer });
+  });
+
+  socket.on("peer:nego:done", ({ to, ans }) => {
+    console.log("peer:nego:done", ans);
+    io.to(to).emit("peer:nego:final", { from: socket.id, ans });
   });
 };

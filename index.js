@@ -23,7 +23,7 @@ const io = new Server(httpServer, {
 
 connectDataBase();
 
-const port = 5000;
+const port = 5001;
 
 app.use(cors());
 
@@ -35,7 +35,9 @@ httpServer.listen(port, () => {
   console.log(`===========================================`);
 });
 
-io.on("connection", webSocketCallBack);
+io.on("connection", (socket) => {
+  webSocketCallBack({ socket, io });
+});
 
 app.get("/", async (request, response) => {
   response.send("Wow, Our API is working!!!!!");
